@@ -423,7 +423,7 @@ export default function AdminDashboard({ user }) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                     <thead>
                       <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                        {['Pass Code', 'Creator', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Payout (RM)', 'Status', ''].map(h => (
+                        {['No.', 'Pass Code', 'Creator', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Payout (RM)', 'Status', ''].map(h => (
                           <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -431,6 +431,7 @@ export default function AdminDashboard({ user }) {
                     <tbody>
                       {filteredRequests.map((req, i) => (
                         <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
                           <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
                           <td style={{ padding: '0.85rem 1rem' }}>
                             {req.created_by_role === 'admin'
@@ -605,7 +606,7 @@ export default function AdminDashboard({ user }) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                       <thead>
                         <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                          {['Pass Code', 'Companion / Staff', 'Patient & Ward', 'Shift Date', 'Base (RM)', 'Tips (RM)', 'Total Payout', 'Payout Status'].map(h => (
+                          {['No.', 'Pass Code', 'Companion / Staff', 'Patient & Ward', 'Shift Date', 'Base (RM)', 'Tips (RM)', 'Total Payout', 'Payout Status'].map(h => (
                             <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
                         </tr>
@@ -618,6 +619,7 @@ export default function AdminDashboard({ user }) {
 
                           return (
                             <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                              <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
                               <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
                               <td style={{ padding: '0.85rem 1rem' }}>
                                 {req.companion ? (
@@ -678,7 +680,7 @@ export default function AdminDashboard({ user }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                   <thead>
                     <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                      {['Pass Code', 'Patient (RN)', 'Ward & Bed', 'Shift Hours', 'Status', ''].map(h => (
+                      {['No.', 'Pass Code', 'Patient (RN)', 'Ward & Bed', 'Shift Hours', 'Status', ''].map(h => (
                         <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                       ))}
                     </tr>
@@ -686,6 +688,7 @@ export default function AdminDashboard({ user }) {
                   <tbody>
                     {activeDutiesList.map((req, i) => (
                       <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                        <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
                         <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
                         <td style={{ padding: '0.85rem 1rem' }}>
                           <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
@@ -1013,7 +1016,7 @@ export default function AdminDashboard({ user }) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                     <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                       <tr style={{ background: 'rgba(15,23,42,0.95)' }}>
-                        {['Pass Code', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Creator'].map(h => (
+                        {['No.', 'Pass Code', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Creator'].map(h => (
                           <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -1021,6 +1024,7 @@ export default function AdminDashboard({ user }) {
                     <tbody>
                       {completedRequests.map((req, i) => (
                         <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
                           <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#94a3b8', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
                           <td style={{ padding: '0.85rem 1rem' }}>
                             <div style={{ fontWeight: '600' }}>{req.patient_name}</div>

@@ -22,6 +22,7 @@ export const requestAPI = {
   update: (id, data) => api.post(`/requests/update/${id}`, data),
   getAvailable: (gender, companionId) => api.get(`/requests/available?gender=${gender}${companionId ? `&companion_id=${companionId}` : ''}`),
   getMyRequests: (userId) => api.get(`/requests/my/${userId}`),
+  getApplicants: (requestId) => api.get(`/requests/applicants/${requestId}`),
   acceptCompanion: (data) => api.post('/requests/accept-companion', data),
 };
 

@@ -6,6 +6,10 @@ export default function AdminDashboard({ user }) {
   const [requests, setRequests] = useState([]);
   const [showOnBehalfModal, setShowOnBehalfModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showApplicantsModal, setShowApplicantsModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [applicants, setApplicants] = useState([]);
+  const [loadingApplicants, setLoadingApplicants] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // System Payment Settings
@@ -56,6 +60,35 @@ export default function AdminDashboard({ user }) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleOpenApplicantsModal = async (req) => {
+    setSelectedRequest(req);
+    setShowApplicantsModal(true);
+    setLoadingApplicants(true);
+    try {
+      const res = await requestAPI.getApplicants(req.id);
+      setApplicants(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingApplicants(false);
+    }
+  };
+
+  const handleApproveApplicant = async (companionId) => {
+    if (!selectedRequest) return;
+    try {
+      await requestAPI.acceptCompanion({
+        request_id: selectedRequest.id,
+        companion_id: companionId
+      });
+      alert('✓ Companion approved and assigned to ward request successfully!');
+      setShowApplicantsModal(false);
+      fetchData();
+    } catch (err) {
+      alert('Failed to approve companion.');
+    }
+  };
 
   const handleOnBehalfSubmit = async (e) => {
     e.preventDefault();
@@ -152,7 +185,7 @@ export default function AdminDashboard({ user }) {
 
       {/* Overview Table */}
       <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem' }}>
-        HoSZA Wards Complete Request Overview
+        HoSZA Wards Complete Request Overview & Approval
       </h3>
 
       {loading ? (
@@ -169,6 +202,7 @@ export default function AdminDashboard({ user }) {
                 <th style={{ padding: '0.75rem' }}>Ward Location</th>
                 <th style={{ padding: '0.75rem' }}>Date & Time</th>
                 <th style={{ padding: '0.75rem' }}>Status</th>
+                <th style={{ padding: '0.75rem' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -193,10 +227,77 @@ export default function AdminDashboard({ user }) {
                   <td style={{ padding: '0.75rem' }}>
                     <span className={`badge badge-${req.status}`}>{req.status}</span>
                   </td>
+                  <td style={{ padding: '0.75rem' }}>
+                    {req.status === 'open' ? (
+                      <button
+                        onClick={() => handleOpenApplicantsModal(req)}
+                        className="btn btn-primary"
+                        style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                      >
+                        👥 Review Applicants
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Assigned</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal Review Applicants */}
+      {showApplicantsModal && selectedRequest && (
+        <div className="modal-overlay">
+          <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '600px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>Review Companion Applicants</h3>
+                <p style={{ fontSize: '0.8rem', color: '#f59e0b' }}>
+                  Request Code: {selectedRequest.request_code} | Ward: {selectedRequest.ward_name} ({selectedRequest.patient_gender === 'L' ? 'Male Ward' : 'Female Ward'})
+                </p>
+              </div>
+              <button onClick={() => setShowApplicantsModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+            </div>
+
+            {loadingApplicants ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading companion applications...</div>
+            ) : applicants.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                No companions have applied for this request yet.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {applicants.map((comp) => (
+                  <div key={comp.id} className="glass-panel" style={{ padding: '1rem 1.25rem', background: 'rgba(15, 23, 42, 0.6)', borderLeft: '4px solid #34d399' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1rem', fontWeight: '700' }}>{comp.name}</h4>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                          IC: <strong>{comp.ic_number}</strong> | Gender: <strong>{comp.gender === 'L' ? 'Male' : 'Female'}</strong>
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                          UniSZA ID: <strong>{comp.companion_profile?.student_staff_id || 'N/A'}</strong> | Rating: ⭐ <strong>{comp.companion_profile?.rating_avg || '5.00'}</strong>
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#34d399', marginTop: '0.25rem' }}>
+                          ✓ Health Declaration: Healthy ({comp.companion_profile?.health_status})
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleApproveApplicant(comp.id)}
+                        className="btn btn-primary"
+                        style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', background: 'linear-gradient(135deg, #059669, #0284c7)' }}
+                      >
+                        ✓ Approve & Assign
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

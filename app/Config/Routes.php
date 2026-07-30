@@ -21,6 +21,7 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($
     $routes->post('requests/update/(:num)', 'RequestController::update/$1');
     $routes->get('requests/available', 'RequestController::availableJobs');
     $routes->get('requests/my/(:num)', 'RequestController::myRequests/$1');
+    $routes->get('requests/applicants/(:num)', 'RequestController::getApplicants/$1');
     $routes->post('requests/accept-companion', 'RequestController::acceptCompanion');
 
     // Companion Routes

@@ -244,4 +244,35 @@ class RequestController extends ResourceController
             'message' => 'Companion successfully assigned for this ward request.'
         ]);
     }
+
+    /**
+     * Get list of companion applicants for a specific request
+     */
+    public function getApplicants($requestId = null)
+    {
+        $appModel  = new ApplicationModel();
+        $userModel = new UserModel();
+        $compModel = new \App\Models\CompanionProfileModel();
+
+        $applications = $appModel->where('request_id', $requestId)->findAll();
+        $result = [];
+
+        foreach ($applications as $app) {
+            $user = $userModel->find($app['companion_id']);
+            if ($user) {
+                unset($user['password']);
+                $profile = $compModel->where('user_id', $user['id'])->first();
+                $user['companion_profile'] = $profile;
+                $user['application_id']    = $app['id'];
+                $user['application_status'] = $app['status'];
+                $result[] = $user;
+            }
+        }
+
+        return $this->respond([
+            'status' => 200,
+            'total'  => count($result),
+            'data'   => $result
+        ]);
+    }
 }

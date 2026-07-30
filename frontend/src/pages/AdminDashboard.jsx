@@ -88,6 +88,7 @@ export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState({ total_users: 0, total_companions: 0, total_families: 0, total_staff: 0, pending_approvals: 0, total_requests: 0, active_duties: 0 });
   const [activeTab, setActiveTab] = useState('requests');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [requestStatusFilter, setRequestStatusFilter] = useState('open');
   const [requests, setRequests] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [unverifiedUsers, setUnverifiedUsers] = useState([]);
@@ -280,27 +281,56 @@ export default function AdminDashboard({ user }) {
 
         {/* ── Tab: Ward Requests ── */}
         {activeTab === 'requests' && (() => {
-          const activeRequests = requests.filter(r => r.status !== 'completed');
-          const completedRequests = requests.filter(r => r.status === 'completed');
+          const statusCounts = {
+            all: requests.length,
+            open: requests.filter(r => r.status === 'open').length,
+            in_progress: requests.filter(r => r.status === 'in_progress' || r.status === 'assigned').length,
+            completed: requests.filter(r => r.status === 'completed').length,
+          };
+
+          const filteredRequests = requests.filter(r => {
+            if (requestStatusFilter === 'all') return true;
+            if (requestStatusFilter === 'open') return r.status === 'open';
+            if (requestStatusFilter === 'in_progress') return r.status === 'in_progress' || r.status === 'assigned';
+            if (requestStatusFilter === 'completed') return r.status === 'completed';
+            return true;
+          });
+
           return (
             <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
               <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
                   <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 Ward Requests Overview</h2>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{activeRequests.length} active requests</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Showing {filteredRequests.length} of {requests.length} requests</div>
                 </div>
-                <button
-                  onClick={() => setShowCompletedModal(true)}
-                  style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', borderRadius: '8px', border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(148,163,184,0.08)', color: '#94a3b8', cursor: 'pointer', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                >
-                  ✅ Completed Requests
-                  <span style={{ background: 'rgba(148,163,184,0.2)', borderRadius: '9999px', padding: '0.05rem 0.5rem', fontSize: '0.73rem' }}>{completedRequests.length}</span>
-                </button>
+                {/* Status Filter Pills */}
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'open',        label: 'Open',        count: statusCounts.open },
+                    { key: 'in_progress', label: 'In Progress', count: statusCounts.in_progress },
+                    { key: 'completed',   label: 'Completed',   count: statusCounts.completed },
+                    { key: 'all',         label: 'All',         count: statusCounts.all },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setRequestStatusFilter(f.key)}
+                      style={{
+                        padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
+                        fontWeight: '700', cursor: 'pointer',
+                        background: requestStatusFilter === f.key ? '#f59e0b' : 'rgba(255,255,255,0.07)',
+                        color: requestStatusFilter === f.key ? '#0f172a' : 'var(--text-muted)',
+                        border: 'none', transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {f.label} <span style={{ opacity: 0.75 }}>({f.count})</span>
+                    </button>
+                  ))}
+                </div>
               </div>
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
-              ) : activeRequests.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No active ward requests at this time.</div>
+              ) : filteredRequests.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No ward requests found for this filter.</div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
@@ -312,7 +342,7 @@ export default function AdminDashboard({ user }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {activeRequests.map((req, i) => (
+                      {filteredRequests.map((req, i) => (
                         <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
                           <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
                           <td style={{ padding: '0.85rem 1rem' }}>

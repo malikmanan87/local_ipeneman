@@ -215,7 +215,21 @@ export default function CompanionDashboard({ user }) {
                       )}
                     </div>
 
-                    {/* Care Note */}
+                    {/* Care Note Input & Log */}
+                    {duty.duty_log && duty.duty_log.care_notes_list && duty.duty_log.care_notes_list.length > 0 && (
+                      <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: '10px', padding: '0.75rem', marginTop: '0.85rem', fontSize: '0.8rem' }}>
+                        <div style={{ fontWeight: '700', color: '#a78bfa', marginBottom: '0.4rem', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>📝 Patient Care Notes (Logged)</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          {duty.duty_log.care_notes_list.map((note, idx) => (
+                            <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem' }}>
+                              <span style={{ color: '#a78bfa', fontWeight: '700', marginRight: '0.4rem' }}>[{note.time}]</span>
+                              <span style={{ color: '#f1f5f9' }}>{note.note}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {duty.status === 'in_progress' && (
                       <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-color)' }}>
                         <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600', display: 'block', marginBottom: '0.35rem' }}>
@@ -336,16 +350,28 @@ export default function CompanionDashboard({ user }) {
       {/* Modal: Resit E-Claim Peneman */}
       {showClaimModal && selectedClaimDuty && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowClaimModal(false)}>
-          <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '520px', padding: '1.75rem' }}>
+          <div id="printable-eclaim-slip" className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '520px', padding: '1.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
               <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🏥 HoSZA E-Claim Slip</div>
-                <h3 style={{ fontWeight: '800', fontSize: '1.15rem', marginTop: '0.2rem' }}>Penyata Tuntutan Elaun Shift</h3>
+                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🏥 HoSZA Hospital Companion Services</div>
+                <h3 style={{ fontWeight: '800', fontSize: '1.15rem', marginTop: '0.2rem' }}>Penyata Tuntutan Elaun Shift (E-Claim Slip)</h3>
               </div>
-              <button onClick={() => setShowClaimModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }} className="no-print">
+                <button
+                  onClick={() => window.print()}
+                  style={{
+                    padding: '0.42rem 0.85rem', borderRadius: '8px', border: '1px solid #34d399',
+                    background: 'linear-gradient(135deg, #059669, #10b981)', color: '#ffffff',
+                    fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer'
+                  }}
+                >
+                  🖨️ Cetak / Simpan PDF
+                </button>
+                <button onClick={() => setShowClaimModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+              </div>
             </div>
 
-            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.85rem', lineHeight: '1.65' }}>
+            <div className="print-border-box" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.85rem', lineHeight: '1.65' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>No. Rujukan Shift:</span>
                 <strong style={{ color: '#f59e0b', fontFamily: 'monospace' }}>{selectedClaimDuty.request_code}</strong>
@@ -381,7 +407,7 @@ export default function CompanionDashboard({ user }) {
             </div>
 
             {/* Financial Breakdown (Based on Actual Hours Worked) */}
-            <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.86rem' }}>
+            <div className="print-border-box" style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.86rem' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.6rem' }}>
                 💰 Tuntutan Berdasarkan Jam Kerja Sebenar (RM {selectedClaimDuty.hourly_rate || '10.00'}/jam)
               </div>

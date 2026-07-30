@@ -248,3 +248,48 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Print Styles for E-Claim Receipt */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .no-print {
+    display: none !important;
+  }
+  #printable-eclaim-slip, #printable-eclaim-slip * {
+    visibility: visible;
+  }
+  #printable-eclaim-slip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 24px;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border: 2px solid #0f172a !important;
+    border-radius: 8px !important;
+  }
+  #printable-eclaim-slip div,
+  #printable-eclaim-slip span,
+  #printable-eclaim-slip strong,
+  #printable-eclaim-slip h3,
+  #printable-eclaim-slip p {
+    color: #0f172a !important;
+    background: transparent !important;
+  }
+  #printable-eclaim-slip .print-border-box {
+    border: 1px solid #64748b !important;
+    background: #f8fafc !important;
+    padding: 12px !important;
+    border-radius: 6px !important;
+  }
+}

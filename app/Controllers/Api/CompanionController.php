@@ -81,7 +81,6 @@ class CompanionController extends ResourceController
         $requestModel = new RequestModel();
 
         $qrToken = 'PAS-HOSZA-' . strtoupper(substr(md5(uniqid()), 0, 10));
-
         $nowTime = date('Y-m-d H:i:s');
 
         $logId = $dutyLogModel->insert([
@@ -113,22 +112,44 @@ class CompanionController extends ResourceController
         $dutyLogModel = new DutyLogModel();
         $requestModel = new RequestModel();
 
+        $requestData = $requestModel->find($requestId);
+
         $log = $dutyLogModel->where('request_id', $requestId)
                             ->where('companion_id', $companionId)
                             ->orderBy('id', 'DESC')
                             ->first();
 
-        $nowTime = date('Y-m-d H:i:s');
+        $nowTimestamp = time();
+        $nowTimeStr   = date('Y-m-d H:i:s');
+        $isEarlyCheckout = false;
+        $workedHours = 0;
 
-        if ($log) {
+        if ($log && !empty($log['check_in'])) {
+            $checkInTimestamp = strtotime($log['check_in']);
+            $workedSeconds    = $nowTimestamp - $checkInTimestamp;
+            $workedHours      = round($workedSeconds / 3600, 2);
+
+            // Check if checkout is earlier than scheduled end_time
+            if ($requestData && !empty($requestData['shift_date']) && !empty($requestData['end_time'])) {
+                $scheduledEndTimestamp = strtotime($requestData['shift_date'] . ' ' . $requestData['end_time']);
+                // If checked out more than 15 mins before scheduled end time
+                if ($nowTimestamp < ($scheduledEndTimestamp - 900)) {
+                    $isEarlyCheckout = true;
+                }
+            }
+
             $existingNotes = json_decode($log['care_notes'], true) ?? [];
+            $noteText = $isEarlyCheckout 
+                ? '⚠️ Early Check-out: Checked out at ' . date('H:i') . ' (Scheduled end: ' . $requestData['end_time'] . '). Worked duration: ' . $workedHours . ' hrs'
+                : 'Companion checked out & completed duty shift at HoSZA Ward (' . date('d/m/Y H:i') . '). Total duration: ' . $workedHours . ' hrs';
+
             $existingNotes[] = [
                 'time' => date('H:i'),
-                'note' => 'Companion checked out & completed duty shift at HoSZA Ward (' . date('d/m/Y H:i') . ')'
+                'note' => $noteText
             ];
 
             $dutyLogModel->update($log['id'], [
-                'check_out'  => $nowTime,
+                'check_out'  => $nowTimeStr,
                 'care_notes' => json_encode($existingNotes)
             ]);
         }
@@ -136,8 +157,12 @@ class CompanionController extends ResourceController
         $requestModel->update($requestId, ['status' => 'completed']);
 
         return $this->respond([
-            'status'  => 200,
-            'message' => 'Checked out successfully. Full duty session at HoSZA has been COMPLETED.'
+            'status'             => 200,
+            'is_early_checkout'  => $isEarlyCheckout,
+            'worked_hours'       => $workedHours,
+            'message'            => $isEarlyCheckout 
+                ? 'Checked out early from HoSZA Ward. Duration logged: ' . $workedHours . ' hours.' 
+                : 'Checked out successfully. Full duty session at HoSZA completed.'
         ]);
     }
 

@@ -278,18 +278,16 @@ export default function AdminDashboard({ user }) {
           <button onClick={() => setShowSettingsModal(true)} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.82rem', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>Edit Rates</button>
         </div>
 
-
-
         {/* ── Tab: Ward Requests ── */}
         {activeTab === 'requests' && (() => {
-          const openRequests = requests.filter(r => r.status === 'open');
+          const activeRequests = requests.filter(r => r.status !== 'completed');
           const completedRequests = requests.filter(r => r.status === 'completed');
           return (
             <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
               <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
                   <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 Ward Requests Overview</h2>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{openRequests.length} open requests</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{activeRequests.length} active requests</div>
                 </div>
                 <button
                   onClick={() => setShowCompletedModal(true)}
@@ -301,8 +299,8 @@ export default function AdminDashboard({ user }) {
               </div>
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
-              ) : openRequests.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No open ward requests at this time.</div>
+              ) : activeRequests.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No active ward requests at this time.</div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
@@ -314,7 +312,7 @@ export default function AdminDashboard({ user }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {openRequests.map((req, i) => (
+                      {activeRequests.map((req, i) => (
                         <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
                           <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
                           <td style={{ padding: '0.85rem 1rem' }}>
@@ -338,9 +336,11 @@ export default function AdminDashboard({ user }) {
                           <td style={{ padding: '0.85rem 1rem' }}><SectionBadge status={req.status} /></td>
                           <td style={{ padding: '0.85rem 1rem' }}>
                             <div style={{ display: 'flex', gap: '0.4rem' }}>
-                              <button onClick={() => handleOpenApplicants(req)} className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem' }}>
-                                👥 Applicants
-                              </button>
+                              {req.status === 'open' && (
+                                <button onClick={() => handleOpenApplicants(req)} className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem' }}>
+                                  👥 Applicants
+                                </button>
+                              )}
                               <button
                                 onClick={() => { setInputPassCode(req.request_code); setVerificationResult(null); setShowVerifyPassModal(true); }}
                                 style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.08)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}

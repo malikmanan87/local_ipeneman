@@ -86,7 +86,6 @@ function VerifyPassResult({ result }) {
 
 export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState({ total_users: 0, total_companions: 0, total_families: 0, total_staff: 0, pending_approvals: 0, total_requests: 0, active_duties: 0 });
-  const [activeTab, setActiveTab] = useState('requests');
   const [roleFilter, setRoleFilter] = useState('all');
   const [requests, setRequests] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -140,7 +139,7 @@ export default function AdminDashboard({ user }) {
   useEffect(() => { fetchData(); }, []);
 
   const handleApproveUser = async (id) => {
-    try { await adminAPI.verifyUser(id); fetchData(); } 
+    try { await adminAPI.verifyUser(id); fetchData(); }
     catch { alert('Failed to approve account.'); }
   };
 
@@ -188,18 +187,33 @@ export default function AdminDashboard({ user }) {
   };
 
   const activeDutiesList = requests.filter(r => r.status === 'in_progress' || r.status === 'assigned');
+
+  // Accurate counts calculated from actual allUsers list
+  const userCounts = {
+    all:       allUsers.length,
+    companion: allUsers.filter(u => u.role === 'companion').length,
+    user:      allUsers.filter(u => u.role === 'user').length,
+    staff:     allUsers.filter(u => u.role === 'staff').length,
+    admin:     allUsers.filter(u => u.role === 'admin').length,
+  };
+
   const filteredUsers = allUsers.filter(u => {
     if (roleFilter === 'all') return true;
-    if (roleFilter === 'staff') return u.role === 'staff' || u.role === 'admin';
     return u.role === roleFilter;
   });
 
-  const TABS = [
-    { key: 'requests',      label: 'Ward Requests',    icon: '📋', count: requests.length,       color: '#f59e0b' },
-    { key: 'active_duties', label: 'Active Shifts',    icon: '🔄', count: activeDutiesList.length, color: '#34d399' },
-    { key: 'approvals',     label: 'Pending Approvals',icon: '🔔', count: unverifiedUsers.length, color: '#f472b6' },
-    { key: 'users',         label: 'User Directory',   icon: '👥', count: allUsers.length,        color: '#38bdf8' },
-  ];
+  const SectionHeader = ({ icon, title, count, color = '#f1f5f9' }) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+      <h2 style={{ fontSize: '1.05rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <span>{icon}</span> {title}
+      </h2>
+      {count !== undefined && (
+        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '0.2rem 0.65rem', borderRadius: '9999px' }}>
+          {count} records
+        </span>
+      )}
+    </div>
+  );
 
   return (
     <div style={{ background: 'var(--bg-dark)', minHeight: '100vh' }}>
@@ -216,27 +230,14 @@ export default function AdminDashboard({ user }) {
               Logged in as <strong style={{ color: '#f1f5f9' }}>{user.name}</strong> · Administrator
             </p>
           </div>
-
           <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => { setInputPassCode(''); setVerificationResult(null); setShowVerifyPassModal(true); }}
-              className="btn btn-primary"
-              style={{ fontSize: '0.875rem', padding: '0.65rem 1.2rem' }}
-            >
+            <button onClick={() => { setInputPassCode(''); setVerificationResult(null); setShowVerifyPassModal(true); }} className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '0.65rem 1.2rem' }}>
               📷 Scan Ward E-Pass
             </button>
-            <button
-              onClick={() => setShowOnBehalfModal(true)}
-              className="btn btn-secondary"
-              style={{ fontSize: '0.875rem', padding: '0.65rem 1.2rem', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}
-            >
+            <button onClick={() => setShowOnBehalfModal(true)} className="btn btn-secondary" style={{ fontSize: '0.875rem', padding: '0.65rem 1.2rem', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}>
               🏥 New On-Behalf Request
             </button>
-            <button
-              onClick={() => setShowSettingsModal(true)}
-              className="btn btn-secondary"
-              style={{ fontSize: '0.875rem', padding: '0.65rem 1.2rem' }}
-            >
+            <button onClick={() => setShowSettingsModal(true)} className="btn btn-secondary" style={{ fontSize: '0.875rem', padding: '0.65rem 1.2rem' }}>
               ⚙️ Payment Rates
             </button>
           </div>
@@ -245,24 +246,12 @@ export default function AdminDashboard({ user }) {
         {/* ── Stat Cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
           {[
-            { label: 'Total Users', value: stats.total_users, sub: `${stats.total_companions} companions · ${stats.total_families} family`, icon: '👥', color: '#38bdf8', tab: 'users' },
-            { label: 'Ward Requests', value: stats.total_requests, sub: 'All time', icon: '📋', color: '#f59e0b', tab: 'requests' },
-            { label: 'Active Shifts', value: stats.active_duties, sub: 'Currently on duty', icon: '🔄', color: '#34d399', tab: 'active_duties' },
-            { label: 'Pending Approvals', value: stats.pending_approvals, sub: 'Awaiting admin review', icon: '🔔', color: '#f472b6', tab: 'approvals', alert: stats.pending_approvals > 0 },
+            { label: 'Total Users',        value: stats.total_users,       sub: `${stats.total_companions} companions · ${stats.total_families} family`, icon: '👥', color: '#38bdf8' },
+            { label: 'Ward Requests',      value: stats.total_requests,    sub: 'All time',               icon: '📋', color: '#f59e0b' },
+            { label: 'Active Shifts',      value: stats.active_duties,     sub: 'Currently on duty',      icon: '🔄', color: '#34d399' },
+            { label: 'Pending Approvals',  value: stats.pending_approvals, sub: 'Awaiting admin review',  icon: '🔔', color: '#f472b6', alert: stats.pending_approvals > 0 },
           ].map(s => (
-            <div
-              key={s.tab}
-              onClick={() => setActiveTab(s.tab)}
-              className="glass-panel"
-              style={{
-                padding: '1.4rem 1.5rem',
-                cursor: 'pointer',
-                border: activeTab === s.tab ? `1.5px solid ${s.color}` : '1px solid var(--glass-border)',
-                transition: 'all 0.2s ease',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-            >
+            <div key={s.label} className="glass-panel" style={{ padding: '1.4rem 1.5rem', position: 'relative', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
               {s.alert && (
                 <span style={{ position: 'absolute', top: '0.85rem', right: '0.85rem', width: '8px', height: '8px', borderRadius: '50%', background: '#f472b6', boxShadow: '0 0 8px #f472b6' }} />
               )}
@@ -275,54 +264,25 @@ export default function AdminDashboard({ user }) {
         </div>
 
         {/* ── Rate Banner ── */}
-        <div className="glass-panel" style={{ padding: '0.9rem 1.35rem', marginBottom: '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid #34d399' }}>
+        <div className="glass-panel" style={{ padding: '0.9rem 1.35rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid #34d399' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             <strong style={{ color: '#34d399' }}>💰 Hourly Rate:</strong>{' '}
             <strong style={{ color: '#f1f5f9' }}>RM {parseFloat(rateSettings.default_hourly_rate || 10).toFixed(2)}/hr</strong>
-            <span style={{ marginLeft: '0.75rem' }}>
-              Range: RM {parseFloat(rateSettings.min_hourly_rate || 8).toFixed(2)} – RM {parseFloat(rateSettings.max_hourly_rate || 30).toFixed(2)}/hr
-            </span>
+            <span style={{ marginLeft: '0.75rem' }}>Range: RM {parseFloat(rateSettings.min_hourly_rate || 8).toFixed(2)} – RM {parseFloat(rateSettings.max_hourly_rate || 30).toFixed(2)}/hr</span>
           </div>
-          <button onClick={() => setShowSettingsModal(true)} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'underline' }}>
-            Edit Rates
-          </button>
+          <button onClick={() => setShowSettingsModal(true)} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.82rem', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>Edit Rates</button>
         </div>
 
-        {/* ── Tab Bar ── */}
-        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              style={{
-                padding: '0.5rem 1.1rem',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: '700',
-                cursor: 'pointer',
-                border: activeTab === t.key ? `1.5px solid ${t.color}` : '1.5px solid transparent',
-                background: activeTab === t.key ? `${t.color}18` : 'rgba(255,255,255,0.05)',
-                color: activeTab === t.key ? t.color : 'var(--text-muted)',
-                transition: 'all 0.18s ease',
-              }}
-            >
-              {t.icon} {t.label}
-              <span style={{ marginLeft: '0.4rem', background: activeTab === t.key ? `${t.color}30` : 'rgba(255,255,255,0.08)', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontSize: '0.75rem' }}>
-                {t.count}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* ── Tab: Ward Requests ── */}
-        {activeTab === 'requests' && (
-          <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 Ward Requests Overview</h2>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{requests.length} total records</span>
-            </div>
+        {/* ══════════════════════════════════════
+            SECTION 1 — Ward Requests
+        ══════════════════════════════════════ */}
+        <div style={{ marginBottom: '2.5rem' }}>
+          <SectionHeader icon="📋" title="Ward Requests Overview" count={requests.length} />
+          <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
+            ) : requests.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No ward requests found.</div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
@@ -339,7 +299,7 @@ export default function AdminDashboard({ user }) {
                         <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
                         <td style={{ padding: '0.85rem 1rem' }}>
                           {req.created_by_role === 'admin'
-                            ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>HOSZA On-Behalf</span>
+                            ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>HoSZA On-Behalf</span>
                             : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#38bdf8', background: 'rgba(56,189,248,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>Patient Family</span>
                           }
                         </td>
@@ -378,16 +338,16 @@ export default function AdminDashboard({ user }) {
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        {/* ── Tab: Active Shifts ── */}
-        {activeTab === 'active_duties' && (
-          <div className="glass-panel animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)' }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>🔄 Active Ward Duty Shifts</h2>
-            </div>
+        {/* ══════════════════════════════════════
+            SECTION 2 — Active Shifts
+        ══════════════════════════════════════ */}
+        <div style={{ marginBottom: '2.5rem' }}>
+          <SectionHeader icon="🔄" title="Active Ward Duty Shifts" count={activeDutiesList.length} />
+          <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
             {activeDutiesList.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>No active shifts at this time.</div>
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No active shifts at this time.</div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
@@ -408,7 +368,7 @@ export default function AdminDashboard({ user }) {
                         </td>
                         <td style={{ padding: '0.85rem 1rem' }}>{req.ward_name} · {req.bed_number}</td>
                         <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                          {req.shift_date}<br/><span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</span>
+                          {req.shift_date}<br /><span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</span>
                         </td>
                         <td style={{ padding: '0.85rem 1rem' }}><SectionBadge status={req.status} /></td>
                         <td style={{ padding: '0.85rem 1rem' }}>
@@ -426,95 +386,92 @@ export default function AdminDashboard({ user }) {
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        {/* ── Tab: Pending Approvals ── */}
-        {activeTab === 'approvals' && (
-          <div className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#f472b6' }}>🔔 Pending Account Registrations ({unverifiedUsers.length})</h2>
+        {/* ══════════════════════════════════════
+            SECTION 3 — Pending Approvals
+        ══════════════════════════════════════ */}
+        <div style={{ marginBottom: '2.5rem' }}>
+          <SectionHeader icon="🔔" title="Pending Account Approvals" count={unverifiedUsers.length} />
+          {unverifiedUsers.length === 0 ? (
+            <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+              ✓ All accounts are verified. No pending registrations.
             </div>
-            {unverifiedUsers.length === 0 ? (
-              <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
-                ✓ All accounts are verified. No pending registrations.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                {unverifiedUsers.map(acc => (
-                  <div key={acc.id} className="glass-panel" style={{ padding: '1.25rem 1.5rem', borderLeft: '3px solid #f472b6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-                        <span style={{ fontWeight: '800', fontSize: '1rem' }}>{acc.name}</span>
-                        <RoleBadge role={acc.role} />
-                        <span style={{ fontSize: '0.73rem', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', padding: '0.15rem 0.55rem', borderRadius: '9999px', fontWeight: '700' }}>
-                          PENDING
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                        <span>🪪 {acc.ic_number}</span>
-                        <span style={{ margin: '0 0.5rem' }}>·</span>
-                        <span>{acc.gender === 'L' ? '🔵 Male' : '🩷 Female'}</span>
-                        <span style={{ margin: '0 0.5rem' }}>·</span>
-                        <span>📧 {acc.email}</span>
-                        <span style={{ margin: '0 0.5rem' }}>·</span>
-                        <span>📱 {acc.phone}</span>
-                        {acc.companion_profile?.student_staff_id && (
-                          <><span style={{ margin: '0 0.5rem' }}>·</span><span style={{ color: '#34d399' }}>🎓 {acc.companion_profile.student_staff_id}</span></>
-                        )}
-                      </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {unverifiedUsers.map(acc => (
+                <div key={acc.id} className="glass-panel" style={{ padding: '1.25rem 1.5rem', borderLeft: '3px solid #f472b6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: '800', fontSize: '1rem' }}>{acc.name}</span>
+                      <RoleBadge role={acc.role} />
+                      <span style={{ fontSize: '0.73rem', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', padding: '0.15rem 0.55rem', borderRadius: '9999px', fontWeight: '700' }}>PENDING</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button
-                        onClick={() => handleApproveUser(acc.id)}
-                        className="btn btn-primary"
-                        style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}
-                      >
-                        ✓ Approve
-                      </button>
-                      <button
-                        onClick={() => handleRejectUser(acc.id)}
-                        style={{ fontSize: '0.82rem', padding: '0.5rem 1rem', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}
-                      >
-                        ✕ Reject
-                      </button>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                      <span>🪪 {acc.ic_number}</span>
+                      <span style={{ margin: '0 0.5rem' }}>·</span>
+                      <span>{acc.gender === 'L' ? '🔵 Male' : '🩷 Female'}</span>
+                      <span style={{ margin: '0 0.5rem' }}>·</span>
+                      <span>📧 {acc.email}</span>
+                      <span style={{ margin: '0 0.5rem' }}>·</span>
+                      <span>📱 {acc.phone}</span>
+                      {acc.companion_profile?.student_staff_id && (
+                        <><span style={{ margin: '0 0.5rem' }}>·</span><span style={{ color: '#34d399' }}>🎓 {acc.companion_profile.student_staff_id}</span></>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Tab: User Directory ── */}
-        {activeTab === 'users' && (
-          <div className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>👥 Registered Users Directory</h2>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                {[
-                  { key: 'all',       label: `All (${allUsers.length})` },
-                  { key: 'companion', label: `Companions (${stats.total_companions})` },
-                  { key: 'user',      label: `Family (${stats.total_families})` },
-                  { key: 'staff',     label: `Staff (${stats.total_staff})` },
-                ].map(f => (
-                  <button
-                    key={f.key}
-                    onClick={() => setRoleFilter(f.key)}
-                    style={{
-                      padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
-                      fontWeight: '700', cursor: 'pointer',
-                      background: roleFilter === f.key ? '#38bdf8' : 'rgba(255,255,255,0.07)',
-                      color: roleFilter === f.key ? '#0f172a' : 'var(--text-muted)',
-                      border: 'none', transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => handleApproveUser(acc.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
+                      ✓ Approve
+                    </button>
+                    <button onClick={() => handleRejectUser(acc.id)} style={{ fontSize: '0.82rem', padding: '0.5rem 1rem', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>
+                      ✕ Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
+          )}
+        </div>
 
-            <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* ══════════════════════════════════════
+            SECTION 4 — User Directory
+        ══════════════════════════════════════ */}
+        <div style={{ marginBottom: '2.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>👥 Registered Users Directory</h2>
+            {/* Role Filter Pills — counts derived from actual allUsers array */}
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {[
+                { key: 'all',       label: 'All',       count: userCounts.all       },
+                { key: 'companion', label: 'Companions', count: userCounts.companion },
+                { key: 'user',      label: 'Family',     count: userCounts.user      },
+                { key: 'staff',     label: 'Staff',      count: userCounts.staff     },
+                { key: 'admin',     label: 'Admin',      count: userCounts.admin     },
+              ].map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setRoleFilter(f.key)}
+                  style={{
+                    padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
+                    fontWeight: '700', cursor: 'pointer',
+                    background: roleFilter === f.key ? '#38bdf8' : 'rgba(255,255,255,0.07)',
+                    color: roleFilter === f.key ? '#0f172a' : 'var(--text-muted)',
+                    border: 'none', transition: 'all 0.15s ease',
+                  }}
+                >
+                  {f.label} <span style={{ opacity: 0.75 }}>({f.count})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
+            ) : filteredUsers.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No users found for this filter.</div>
+            ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                   <thead>
@@ -554,9 +511,9 @@ export default function AdminDashboard({ user }) {
                   </tbody>
                 </table>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* ══════════════════════════════════════
@@ -565,7 +522,7 @@ export default function AdminDashboard({ user }) {
 
       {/* Modal: E-Pass Verification */}
       {showVerifyPassModal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowVerifyPassModal(false)}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowVerifyPassModal(false)}>
           <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '540px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <div>
@@ -574,7 +531,6 @@ export default function AdminDashboard({ user }) {
               </div>
               <button onClick={() => setShowVerifyPassModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
             </div>
-
             <form onSubmit={handleVerifyPassSubmit}>
               <div style={{ display: 'flex', gap: '0.6rem' }}>
                 <input
@@ -591,7 +547,6 @@ export default function AdminDashboard({ user }) {
                 </button>
               </div>
             </form>
-
             <VerifyPassResult result={verificationResult} />
           </div>
         </div>
@@ -599,7 +554,7 @@ export default function AdminDashboard({ user }) {
 
       {/* Modal: Applicants */}
       {showApplicantsModal && selectedRequest && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowApplicantsModal(false)}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowApplicantsModal(false)}>
           <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '580px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
               <div>
@@ -608,7 +563,6 @@ export default function AdminDashboard({ user }) {
               </div>
               <button onClick={() => setShowApplicantsModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
             </div>
-
             {loadingApplicants ? (
               <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>Loading applicants...</div>
             ) : applicants.length === 0 ? (
@@ -618,16 +572,11 @@ export default function AdminDashboard({ user }) {
                 <div>
                   <div style={{ fontWeight: '700', marginBottom: '0.25rem' }}>{comp.name}</div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    IC: {comp.ic_number} · {comp.gender === 'L' ? '🔵 Male' : '🩷 Female'}
-                    {' '}· ⭐ {comp.companion_profile?.rating_avg || '5.00'}
+                    IC: {comp.ic_number} · {comp.gender === 'L' ? '🔵 Male' : '🩷 Female'} · ⭐ {comp.companion_profile?.rating_avg || '5.00'}
                     {comp.companion_profile?.student_staff_id && <span> · 🎓 {comp.companion_profile.student_staff_id}</span>}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleApproveApplicant(comp.id)}
-                  className="btn btn-primary"
-                  style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}
-                >
+                <button onClick={() => handleApproveApplicant(comp.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
                   ✓ Assign
                 </button>
               </div>
@@ -638,7 +587,7 @@ export default function AdminDashboard({ user }) {
 
       {/* Modal: Payment Rate Settings */}
       {showSettingsModal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowSettingsModal(false)}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowSettingsModal(false)}>
           <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '440px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <div>
@@ -670,7 +619,7 @@ export default function AdminDashboard({ user }) {
 
       {/* Modal: On-Behalf Request */}
       {showOnBehalfModal && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowOnBehalfModal(false)}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowOnBehalfModal(false)}>
           <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '580px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
               <div>
@@ -686,7 +635,7 @@ export default function AdminDashboard({ user }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label>Patient Reg. Number (RN)</label>
+                  <label>Patient RN</label>
                   <input type="text" className="form-input" value={formData.patient_rn} onChange={e => setFormData({ ...formData, patient_rn: e.target.value })} required />
                 </div>
                 <div className="form-group">

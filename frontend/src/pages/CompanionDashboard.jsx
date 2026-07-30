@@ -2,6 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { requestAPI, companionAPI } from '../services/api';
 import EPassModal from '../components/EPassModal';
 
+const STATUS_STYLE = {
+  assigned:    { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  label: 'Assigned' },
+  in_progress: { color: '#a78bfa', bg: 'rgba(139,92,246,0.15)', label: 'In Progress' },
+  completed:   { color: '#94a3b8', bg: 'rgba(100,116,139,0.15)',label: 'Completed' },
+  open:        { color: '#34d399', bg: 'rgba(5,150,105,0.15)',   label: 'Open' },
+};
+
+function StatusBadge({ status }) {
+  const s = STATUS_STYLE[status] || { color: '#94a3b8', bg: 'rgba(100,116,139,0.15)', label: status };
+  return (
+    <span style={{ padding: '0.22rem 0.65rem', borderRadius: '9999px', fontSize: '0.73rem', fontWeight: '800', background: s.bg, color: s.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      {s.label}
+    </span>
+  );
+}
+
 export default function CompanionDashboard({ user }) {
   const [availableJobs, setAvailableJobs] = useState([]);
   const [myDuties, setMyDuties] = useState([]);
@@ -9,23 +25,19 @@ export default function CompanionDashboard({ user }) {
   const [loading, setLoading] = useState(true);
   const [activeDutyForPass, setActiveDutyForPass] = useState(null);
   const [careNoteText, setCareNoteText] = useState({});
+  const [activeTab, setActiveTab] = useState('duties');
 
   const fetchCompanionData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch available jobs strictly matching companion's gender and check application status
-      const jobsRes = await requestAPI.getAvailable(user.gender, user.id);
+      const [jobsRes, dutiesRes, ratingsRes] = await Promise.all([
+        requestAPI.getAvailable(user.gender, user.id),
+        companionAPI.getMyDuties(user.id),
+        companionAPI.getRatings(user.id),
+      ]);
       setAvailableJobs(jobsRes.data.data || []);
-
-      // 2. Fetch assigned duties
-      const dutiesRes = await companionAPI.getMyDuties(user.id);
       setMyDuties(dutiesRes.data || []);
-
-      // 3. Fetch companion ratings & reviews
-      const ratingsRes = await companionAPI.getRatings(user.id);
-      if (ratingsRes.data) {
-        setRatingsData(ratingsRes.data);
-      }
+      if (ratingsRes.data) setRatingsData(ratingsRes.data);
     } catch (err) {
       console.error('Error fetching companion data:', err);
     } finally {
@@ -33,48 +45,33 @@ export default function CompanionDashboard({ user }) {
     }
   };
 
-  useEffect(() => {
-    fetchCompanionData();
-  }, [user]);
+  useEffect(() => { fetchCompanionData(); }, [user]);
 
   const handleApply = async (requestId) => {
     try {
-      const res = await companionAPI.applyJob({
-        request_id: requestId,
-        companion_id: user.id
-      });
-      alert(res.data.message || 'Application submitted successfully!');
+      const res = await companionAPI.applyJob({ request_id: requestId, companion_id: user.id });
+      alert(res.data.message || 'Application submitted!');
       fetchCompanionData();
     } catch (err) {
-      alert(err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to apply for duty.');
+      alert(err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to apply.');
     }
   };
 
   const handleCheckIn = async (requestId) => {
     try {
-      await companionAPI.checkIn({
-        request_id: requestId,
-        companion_id: user.id
-      });
-      alert('✓ Checked in successfully at HoSZA Ward!');
+      await companionAPI.checkIn({ request_id: requestId, companion_id: user.id });
+      alert('✓ Checked in at HoSZA Ward!');
       fetchCompanionData();
-    } catch (err) {
-      alert('Check-in failed.');
-    }
+    } catch (err) { alert('Check-in failed.'); }
   };
 
   const handleCheckOut = async (requestId) => {
-    if (!window.confirm('Are you sure you want to Check-out and complete this duty shift?')) return;
+    if (!window.confirm('Complete and end this duty shift?')) return;
     try {
-      await companionAPI.checkOut({
-        request_id: requestId,
-        companion_id: user.id
-      });
-      alert('✓ Checked out successfully. Duty shift completed.');
+      await companionAPI.checkOut({ request_id: requestId, companion_id: user.id });
+      alert('✓ Shift completed successfully.');
       fetchCompanionData();
-    } catch (err) {
-      alert('Check-out failed.');
-    }
+    } catch (err) { alert('Check-out failed.'); }
   };
 
   const handleAddNote = async (requestId) => {
@@ -85,202 +82,249 @@ export default function CompanionDashboard({ user }) {
       setCareNoteText({ ...careNoteText, [requestId]: '' });
       alert('Care note added!');
       fetchCompanionData();
-    } catch (err) {
-      alert('Failed to add care note.');
-    }
+    } catch (err) { alert('Failed to add care note.'); }
   };
 
+  const activeDuties = myDuties.filter(d => d.status === 'assigned' || d.status === 'in_progress');
+  const completedDuties = myDuties.filter(d => d.status === 'completed');
+
+  const TABS = [
+    { key: 'duties',    label: 'My Duties',        icon: '📋', count: myDuties.length,        color: '#34d399' },
+    { key: 'jobs',      label: 'Open Opportunities',icon: '🔍', count: availableJobs.length,    color: '#38bdf8' },
+    { key: 'ratings',   label: 'Ratings & Reviews', icon: '⭐', count: ratingsData.total_reviews, color: '#f59e0b' },
+  ];
+
   return (
-    <div className="container" style={{ padding: '2rem 1.5rem' }}>
-      {/* Banner / Header */}
-      <div className="glass-panel" style={{ padding: '1.75rem', marginBottom: '2rem', background: 'linear-gradient(135deg, rgba(5, 150, 105, 0.2), rgba(2, 132, 199, 0.2))' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ background: 'var(--bg-dark)', minHeight: '100vh' }}>
+      <div className="container" style={{ maxWidth: '1100px', padding: '2rem 1.5rem' }}>
+
+        {/* ── Page Header ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>
-              Companion Portal (HoSZA)
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-              Safety Filter Active: Displaying duties for <strong style={{ color: user.gender === 'L' ? '#60a5fa' : '#f472b6' }}>{user.gender === 'L' ? 'MALE' : 'FEMALE'} PATIENTS ONLY</strong>.
+            <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#34d399', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+              🏥 Hospital Sultan Zainal Abidin (HoSZA)
+            </div>
+            <h1 style={{ fontSize: '1.65rem', fontWeight: '800', marginBottom: '0.25rem' }}>Companion Portal</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+              Logged in as <strong style={{ color: '#f1f5f9' }}>{user.name}</strong> ·{' '}
+              <span style={{ color: user.gender === 'L' ? '#60a5fa' : '#f472b6', fontWeight: '700' }}>
+                {user.gender === 'L' ? '♂ Male Companion' : '♀ Female Companion'}
+              </span>
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', color: '#f59e0b', fontWeight: '700' }}>
-              ⭐ Score: {parseFloat(ratingsData.rating_avg || 5.0).toFixed(2)} / 5.0 ({ratingsData.total_reviews} reviews)
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.875rem', color: '#f59e0b', fontWeight: '700', textAlign: 'center' }}>
+              ⭐ {parseFloat(ratingsData.rating_avg || 5.0).toFixed(2)} / 5.0
+              <div style={{ fontSize: '0.72rem', fontWeight: '400', color: '#94a3b8', marginTop: '0.05rem' }}>{ratingsData.total_reviews} reviews</div>
             </div>
-            <span className={`badge ${user.gender === 'L' ? 'badge-male' : 'badge-female'}`} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-              {user.gender === 'L' ? '♂ MALE COMPANION' : '♀ FEMALE COMPANION'}
-            </span>
+            <div style={{ background: 'rgba(5,150,105,0.12)', border: '1px solid rgba(5,150,105,0.35)', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.82rem', color: '#34d399', fontWeight: '700', textAlign: 'center' }}>
+              🛡️ Gender-Safe Filter
+              <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.05rem' }}>
+                {user.gender === 'L' ? 'Male Wards Only' : 'Female Wards Only'}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Section 1: My Active / Assigned Duties */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          📋 My Assigned Duties at HoSZA
-        </h3>
+        {/* ── Stat Cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.1rem', marginBottom: '1.75rem' }}>
+          {[
+            { label: 'Active Duties', value: activeDuties.length, icon: '🔄', color: '#a78bfa', tab: 'duties' },
+            { label: 'Completed Shifts', value: completedDuties.length, icon: '✅', color: '#34d399', tab: 'duties' },
+            { label: 'Open Opportunities', value: availableJobs.length, icon: '🔍', color: '#38bdf8', tab: 'jobs' },
+            { label: 'Rating Score', value: `${parseFloat(ratingsData.rating_avg || 5.0).toFixed(1)}★`, icon: '⭐', color: '#f59e0b', tab: 'ratings' },
+          ].map(s => (
+            <div
+              key={s.tab + s.label}
+              onClick={() => setActiveTab(s.tab)}
+              className="glass-panel"
+              style={{ padding: '1.25rem', cursor: 'pointer', border: activeTab === s.tab ? `1.5px solid ${s.color}` : '1px solid var(--glass-border)', transition: 'all 0.2s ease' }}
+            >
+              <div style={{ fontSize: '1.4rem', marginBottom: '0.5rem' }}>{s.icon}</div>
+              <div style={{ fontSize: '1.6rem', fontWeight: '800', color: s.color, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#e2e8f0', marginTop: '0.3rem' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
 
-        {myDuties.length === 0 ? (
-          <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No active or assigned duties currently. Please apply for duties below.
-          </div>
-        ) : (
-          <div className="grid grid-2">
-            {myDuties.map((duty) => (
-              <div key={duty.id} className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #059669' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                  <span className={`badge badge-${duty.status}`}>{duty.status}</span>
-                  <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: '700' }}>{duty.request_code}</span>
-                </div>
+        {/* ── Tab Bar ── */}
+        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              style={{
+                padding: '0.5rem 1.1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer',
+                border: activeTab === t.key ? `1.5px solid ${t.color}` : '1.5px solid transparent',
+                background: activeTab === t.key ? `${t.color}18` : 'rgba(255,255,255,0.05)',
+                color: activeTab === t.key ? t.color : 'var(--text-muted)',
+                transition: 'all 0.18s ease',
+              }}
+            >
+              {t.icon} {t.label}
+              <span style={{ marginLeft: '0.4rem', background: activeTab === t.key ? `${t.color}30` : 'rgba(255,255,255,0.08)', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontSize: '0.75rem' }}>
+                {t.count}
+              </span>
+            </button>
+          ))}
+        </div>
 
-                <h4 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.5rem' }}>
-                  {duty.ward_name} (Bed {duty.bed_number})
-                </h4>
+        {/* ── Tab: My Duties ── */}
+        {activeTab === 'duties' && (
+          <div className="animate-fade-in">
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
+            ) : myDuties.length === 0 ? (
+              <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
+                No duties assigned yet. Browse and apply for ward opportunities below.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
+                {myDuties.map(duty => (
+                  <div key={duty.id} className="glass-panel" style={{ padding: '1.5rem', borderLeft: `3px solid ${STATUS_STYLE[duty.status]?.color || '#94a3b8'}` }}>
+                    {/* Card Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <StatusBadge status={duty.status} />
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#f59e0b', fontWeight: '800' }}>{duty.request_code}</span>
+                    </div>
 
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-                  <strong>Patient:</strong> {duty.patient_name} ({duty.patient_age} yrs)
-                </p>
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-                  <strong>Shift Time:</strong> {duty.shift_date} ({duty.start_time} - {duty.end_time})
-                </p>
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                  <strong>Task Details:</strong> {duty.task_details}
-                </p>
+                    {/* Info */}
+                    <h3 style={{ fontWeight: '800', fontSize: '1.05rem', marginBottom: '0.5rem' }}>
+                      {duty.ward_name}
+                    </h3>
+                    <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
+                      <p>🛏️ Bed: <strong style={{ color: '#f1f5f9' }}>{duty.bed_number}</strong></p>
+                      <p>👴 Patient: <strong style={{ color: '#f1f5f9' }}>{duty.patient_name}</strong> (Age {duty.patient_age})</p>
+                      <p>🗓️ {duty.shift_date} · {duty.start_time} – {duty.end_time}</p>
+                      <p style={{ marginTop: '0.25rem' }}>📌 {duty.task_details}</p>
+                    </div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>
-                  <button onClick={() => setActiveDutyForPass(duty)} className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>
-                    📱 Show Ward E-Pass
-                  </button>
-
-                  {duty.status === 'assigned' && (
-                    <button onClick={() => handleCheckIn(duty.id)} className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>
-                      ▶ Ward Check-in
-                    </button>
-                  )}
-
-                  {duty.status === 'in_progress' && (
-                    <button onClick={() => handleCheckOut(duty.id)} className="btn btn-danger" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>
-                      ⏹ Check-out & End Shift
-                    </button>
-                  )}
-                </div>
-
-                {/* Care note widget for in_progress duties */}
-                {duty.status === 'in_progress' && (
-                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600' }}>+ Add Patient Care Activity Note:</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem' }}>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="e.g. Patient finished lunch"
-                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
-                        value={careNoteText[duty.id] || ''}
-                        onChange={(e) => setCareNoteText({ ...careNoteText, [duty.id]: e.target.value })}
-                      />
-                      <button onClick={() => handleAddNote(duty.id)} className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>
-                        Save
+                    {/* Actions */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                      <button
+                        onClick={() => setActiveDutyForPass(duty)}
+                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.08)', color: '#38bdf8', cursor: 'pointer', fontWeight: '700' }}
+                      >
+                        📱 Show E-Pass
                       </button>
+                      {duty.status === 'assigned' && (
+                        <button onClick={() => handleCheckIn(duty.id)} className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                          ▶ Check In
+                        </button>
+                      )}
+                      {duty.status === 'in_progress' && (
+                        <button onClick={() => handleCheckOut(duty.id)} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>
+                          ⏹ End Shift
+                        </button>
+                      )}
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Section 2: Ratings & Reviews Received */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          ⭐ Feedback & Ratings Received from Families
-        </h3>
-
-        {ratingsData.data.length === 0 ? (
-          <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No rating reviews submitted yet. Complete duties to receive feedback from patient families.
-          </div>
-        ) : (
-          <div className="grid grid-2">
-            {ratingsData.data.map((rev) => (
-              <div key={rev.id} className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #f59e0b' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span style={{ color: '#f59e0b', fontSize: '1rem', fontWeight: '700' }}>
-                    {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)} ({rev.rating}/5)
-                  </span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {rev.request_code}
-                  </span>
-                </div>
-                <p style={{ fontSize: '0.875rem', fontStyle: 'italic', marginBottom: '0.5rem', color: '#e2e8f0' }}>
-                  "{rev.review || 'Great companion service provided.'}"
-                </p>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  Submitted by: <strong>{rev.rater_name}</strong> ({rev.ward_name})
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Section 3: Open Job Feed (Filtered by Gender) */}
-      <div>
-        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          🔍 Available Companion Opportunities (HoSZA Wards)
-        </h3>
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading opportunities...</div>
-        ) : availableJobs.length === 0 ? (
-          <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No new companion requests for {user.gender === 'L' ? 'Male' : 'Female'} patients at HoSZA currently. Please check back soon.
-          </div>
-        ) : (
-          <div className="grid grid-2">
-            {availableJobs.map((job) => (
-              <div key={job.id} className="glass-panel" style={{ padding: '1.5rem', transition: 'transform 0.2s ease' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <span className={`badge ${job.patient_gender === 'L' ? 'badge-male' : 'badge-female'}`}>
-                    Patient: {job.patient_gender === 'L' ? 'Male' : 'Female'}
-                  </span>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>
-                      RM {(parseFloat(job.allowance_amount || 0) + parseFloat(job.tip_amount || 0)).toFixed(2)}
-                    </div>
-                    {parseFloat(job.tip_amount) > 0 && (
-                      <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: '600' }}>
-                        🎁 Incl. RM {parseFloat(job.tip_amount).toFixed(2)} tip
+                    {/* Care Note */}
+                    {duty.status === 'in_progress' && (
+                      <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-color)' }}>
+                        <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600', display: 'block', marginBottom: '0.35rem' }}>
+                          + Add Patient Care Note
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="e.g. Patient finished lunch"
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                            value={careNoteText[duty.id] || ''}
+                            onChange={e => setCareNoteText({ ...careNoteText, [duty.id]: e.target.value })}
+                          />
+                          <button onClick={() => handleAddNote(duty.id)} className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap' }}>
+                            Save
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
-
-                <h4 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.5rem' }}>
-                  {job.ward_name} (HoSZA)
-                </h4>
-
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                  <p>🗓️ <strong>Date:</strong> {job.shift_date}</p>
-                  <p>⏰ <strong>Time:</strong> {job.start_time} - {job.end_time}</p>
-                  <p>💵 <strong>Allowance:</strong> RM {parseFloat(job.allowance_amount || 0).toFixed(2)} {parseFloat(job.tip_amount) > 0 ? `+ RM ${parseFloat(job.tip_amount).toFixed(2)} tip` : ''}</p>
-                  <p>👴 <strong>Patient:</strong> Age ~{job.patient_age} yrs</p>
-                  <p>📌 <strong>Tasks:</strong> {job.task_details}</p>
-                </div>
-
-                {job.has_applied ? (
-                  <button disabled className="btn btn-secondary" style={{ width: '100%', marginTop: '0.5rem', opacity: 0.75, cursor: 'not-allowed', background: 'rgba(51, 65, 85, 0.6)', border: '1px solid #64748b', color: '#cbd5e1', fontWeight: '700' }}>
-                    ✓ Applied (Pending Approval)
-                  </button>
-                ) : (
-                  <button onClick={() => handleApply(job.id)} className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                    Apply as Companion
-                  </button>
-                )}
+                ))}
               </div>
-            ))}
+            )}
+          </div>
+        )}
+
+        {/* ── Tab: Open Opportunities ── */}
+        {activeTab === 'jobs' && (
+          <div className="animate-fade-in">
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading opportunities...</div>
+            ) : availableJobs.length === 0 ? (
+              <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
+                No open opportunities for {user.gender === 'L' ? 'Male' : 'Female'} patients at HoSZA right now. Please check back soon.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+                {availableJobs.map(job => {
+                  const total = (parseFloat(job.allowance_amount || 0) + parseFloat(job.tip_amount || 0)).toFixed(2);
+                  const hasTip = parseFloat(job.tip_amount) > 0;
+                  return (
+                    <div key={job.id} className="glass-panel" style={{ padding: '1.5rem', border: '1px solid var(--glass-border)', transition: 'border-color 0.2s ease' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                        <span style={{ padding: '0.22rem 0.65rem', borderRadius: '9999px', fontSize: '0.73rem', fontWeight: '800', background: job.patient_gender === 'L' ? 'rgba(59,130,246,0.15)' : 'rgba(236,72,153,0.15)', color: job.patient_gender === 'L' ? '#60a5fa' : '#f472b6' }}>
+                          {job.patient_gender === 'L' ? '🔵 Male Patient' : '🩷 Female Patient'}
+                        </span>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#34d399' }}>RM {total}</div>
+                          {hasTip && <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: '700' }}>🎁 incl. RM {parseFloat(job.tip_amount).toFixed(2)} tip</div>}
+                        </div>
+                      </div>
+
+                      <h3 style={{ fontWeight: '800', fontSize: '1rem', marginBottom: '0.6rem' }}>{job.ward_name} (HoSZA)</h3>
+                      <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7', marginBottom: '1rem' }}>
+                        <p>🗓️ {job.shift_date} · {job.start_time} – {job.end_time}</p>
+                        <p>👴 Patient Age: ~{job.patient_age} yrs</p>
+                        <p>📌 {job.task_details}</p>
+                      </div>
+
+                      {job.has_applied ? (
+                        <button disabled style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(51,65,85,0.6)', border: '1px solid #475569', color: '#94a3b8', fontWeight: '700', fontSize: '0.85rem', cursor: 'not-allowed' }}>
+                          ✓ Applied — Pending Approval
+                        </button>
+                      ) : (
+                        <button onClick={() => handleApply(job.id)} className="btn btn-primary" style={{ width: '100%', fontSize: '0.875rem' }}>
+                          Apply as Companion
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Tab: Ratings & Reviews ── */}
+        {activeTab === 'ratings' && (
+          <div className="animate-fade-in">
+            {ratingsData.data.length === 0 ? (
+              <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
+                No feedback yet. Complete duties to receive ratings from patient families.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+                {ratingsData.data.map(rev => (
+                  <div key={rev.id} className="glass-panel" style={{ padding: '1.4rem', borderLeft: '3px solid #f59e0b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                      <div style={{ color: '#fbbf24', fontSize: '1.1rem', letterSpacing: '0.05em' }}>
+                        {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                      </div>
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{rev.request_code}</span>
+                    </div>
+                    <p style={{ fontSize: '0.875rem', fontStyle: 'italic', color: '#e2e8f0', marginBottom: '0.75rem', lineHeight: '1.55' }}>
+                      "{rev.review || 'Great companion service provided.'}"
+                    </p>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      By: <strong style={{ color: '#f1f5f9' }}>{rev.rater_name}</strong> · {rev.ward_name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

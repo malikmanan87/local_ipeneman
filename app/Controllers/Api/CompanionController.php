@@ -82,11 +82,13 @@ class CompanionController extends ResourceController
 
         $qrToken = 'PAS-HOSZA-' . strtoupper(substr(md5(uniqid()), 0, 10));
 
+        $nowTime = date('Y-m-d H:i:s');
+
         $logId = $dutyLogModel->insert([
             'request_id'   => $requestId,
             'companion_id' => $companionId,
-            'check_in'     => date('Y-m-d H:i:s'),
-            'care_notes'   => json_encode([['time' => date('H:i'), 'note' => 'Companion arrived & checked in at HoSZA Ward']]),
+            'check_in'     => $nowTime,
+            'care_notes'   => json_encode([['time' => date('H:i'), 'note' => 'Companion checked in at HoSZA Ward (' . date('d/m/Y H:i') . ')']]),
             'qr_token'     => $qrToken
         ]);
 
@@ -116,9 +118,18 @@ class CompanionController extends ResourceController
                             ->orderBy('id', 'DESC')
                             ->first();
 
+        $nowTime = date('Y-m-d H:i:s');
+
         if ($log) {
+            $existingNotes = json_decode($log['care_notes'], true) ?? [];
+            $existingNotes[] = [
+                'time' => date('H:i'),
+                'note' => 'Companion checked out & completed duty shift at HoSZA Ward (' . date('d/m/Y H:i') . ')'
+            ];
+
             $dutyLogModel->update($log['id'], [
-                'check_out' => date('Y-m-d H:i:s')
+                'check_out'  => $nowTime,
+                'care_notes' => json_encode($existingNotes)
             ]);
         }
 

@@ -294,32 +294,74 @@ export default function AdminDashboard({ user }) {
         </div>
 
         {/* ── Stat Cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
-          {[
-            { label: 'Ward Requests',     value: stats.total_requests,    sub: 'All time',              icon: '📋', color: '#f59e0b', tab: 'requests' },
-            { label: 'Financial Ledger',  value: `RM ${totalGrandSum.toFixed(2)}`, sub: `RM ${totalDisbursedSum.toFixed(2)} disbursed`, icon: '💵', color: '#34d399', tab: 'finance' },
-            { label: 'Pending Approvals', value: stats.pending_approvals, sub: 'Awaiting admin review', icon: '🔔', color: '#f472b6', tab: 'approvals', alert: stats.pending_approvals > 0 },
-            { label: 'Total Users',       value: stats.total_users,       sub: `${stats.total_companions} companions · ${stats.total_families} family`, icon: '👥', color: '#38bdf8', tab: 'users' },
-          ].map(s => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+          {/* Card 1: Ward Requests */}
+          <div
+            onClick={() => setActiveTab('requests')}
+            className="glass-panel"
+            style={{
+              padding: '1.4rem 1.5rem', cursor: 'pointer',
+              border: activeTab === 'requests' ? '1.5px solid #f59e0b' : '1px solid var(--glass-border)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <div style={{ fontSize: '1.6rem', marginBottom: '0.65rem' }}>📋</div>
+            <div style={{ fontSize: '1.9rem', fontWeight: '800', color: '#f59e0b', lineHeight: 1 }}>{stats.total_requests}</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#f1f5f9', marginTop: '0.3rem' }}>Ward Requests</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>All time</div>
+          </div>
+
+          {/* Card 2: Financial Ledger */}
+          <div
+            onClick={() => setActiveTab('finance')}
+            className="glass-panel"
+            style={{
+              padding: '1.4rem 1.5rem', cursor: 'pointer',
+              border: activeTab === 'finance' ? '1.5px solid #34d399' : '1px solid var(--glass-border)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <div style={{ fontSize: '1.6rem', marginBottom: '0.65rem' }}>💵</div>
+            <div style={{ fontSize: '1.9rem', fontWeight: '800', color: '#34d399', lineHeight: 1 }}>RM {totalGrandSum.toFixed(2)}</div>
+            <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#f1f5f9', marginTop: '0.3rem' }}>Financial Ledger</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>RM {totalDisbursedSum.toFixed(2)} disbursed</div>
+          </div>
+
+          {/* Combined Card 3 & 4: Pending Approvals + Total Users with Separator */}
+          <div
+            className="glass-panel"
+            style={{
+              padding: '1.4rem 1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem',
+              alignItems: 'center', position: 'relative', overflow: 'hidden',
+              border: (activeTab === 'approvals' ? '1.5px solid #f472b6' : activeTab === 'users' ? '1.5px solid #38bdf8' : '1px solid var(--glass-border)'),
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {/* Part A: Pending Approvals */}
             <div
-              key={s.tab}
-              onClick={() => setActiveTab(s.tab)}
-              className="glass-panel"
-              style={{
-                padding: '1.4rem 1.5rem', cursor: 'pointer', position: 'relative', overflow: 'hidden',
-                border: activeTab === s.tab ? `1.5px solid ${s.color}` : '1px solid var(--glass-border)',
-                transition: 'all 0.2s ease',
-              }}
+              onClick={() => setActiveTab('approvals')}
+              style={{ cursor: 'pointer', paddingRight: '0.5rem', position: 'relative' }}
             >
-              {s.alert && (
-                <span style={{ position: 'absolute', top: '0.85rem', right: '0.85rem', width: '8px', height: '8px', borderRadius: '50%', background: '#f472b6', boxShadow: '0 0 8px #f472b6' }} />
+              {stats.pending_approvals > 0 && (
+                <span style={{ position: 'absolute', top: 0, right: '0.2rem', width: '8px', height: '8px', borderRadius: '50%', background: '#f472b6', boxShadow: '0 0 8px #f472b6' }} />
               )}
-              <div style={{ fontSize: '1.6rem', marginBottom: '0.65rem' }}>{s.icon}</div>
-              <div style={{ fontSize: '1.9rem', fontWeight: '800', color: s.color, lineHeight: 1 }}>{s.value}</div>
-              <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#f1f5f9', marginTop: '0.3rem' }}>{s.label}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{s.sub}</div>
+              <div style={{ fontSize: '1.6rem', marginBottom: '0.65rem' }}>🔔</div>
+              <div style={{ fontSize: '1.9rem', fontWeight: '800', color: '#f472b6', lineHeight: 1 }}>{stats.pending_approvals}</div>
+              <div style={{ fontSize: '0.88rem', fontWeight: '700', color: activeTab === 'approvals' ? '#f472b6' : '#f1f5f9', marginTop: '0.3rem' }}>Pending Approvals</div>
+              <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Review accounts</div>
             </div>
-          ))}
+
+            {/* Separator + Part B: Total Users */}
+            <div
+              onClick={() => setActiveTab('users')}
+              style={{ cursor: 'pointer', borderLeft: '1px solid rgba(255,255,255,0.12)', paddingLeft: '1rem' }}
+            >
+              <div style={{ fontSize: '1.6rem', marginBottom: '0.65rem' }}>👥</div>
+              <div style={{ fontSize: '1.9rem', fontWeight: '800', color: '#38bdf8', lineHeight: 1 }}>{stats.total_users}</div>
+              <div style={{ fontSize: '0.88rem', fontWeight: '700', color: activeTab === 'users' ? '#38bdf8' : '#f1f5f9', marginTop: '0.3rem' }}>Total Users</div>
+              <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{stats.total_companions} comp · {stats.total_families} fam</div>
+            </div>
+          </div>
         </div>
 
 

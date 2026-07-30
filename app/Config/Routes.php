@@ -23,6 +23,7 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($
     $routes->get('requests/my/(:num)', 'RequestController::myRequests/$1');
     $routes->get('requests/applicants/(:num)', 'RequestController::getApplicants/$1');
     $routes->post('requests/accept-companion', 'RequestController::acceptCompanion');
+    $routes->post('requests/rate-companion', 'RequestController::rateCompanion');
 
     // Companion Routes
     $routes->post('companion/apply', 'CompanionController::apply');

@@ -5,7 +5,13 @@ export default function PatientDashboard({ user }) {
   const [myRequests, setMyRequests] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showApplicantsModal, setShowApplicantsModal] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedReqForRating, setSelectedReqForRating] = useState(null);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+
   const [applicants, setApplicants] = useState([]);
   const [loadingApplicants, setLoadingApplicants] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -129,6 +135,31 @@ export default function PatientDashboard({ user }) {
     }
   };
 
+  const handleOpenRatingModal = (req) => {
+    setSelectedReqForRating(req);
+    setRatingValue(5);
+    setReviewText('');
+    setShowRatingModal(true);
+  };
+
+  const handleRatingSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedReqForRating) return;
+    try {
+      await requestAPI.rateCompanion({
+        request_id: selectedReqForRating.id,
+        rated_by_user_id: user.id,
+        rating: ratingValue,
+        review: reviewText
+      });
+      alert('✓ Thank you for rating the companion!');
+      setShowRatingModal(false);
+      fetchMyRequests();
+    } catch (err) {
+      alert(err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to submit rating.');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
@@ -217,9 +248,15 @@ export default function PatientDashboard({ user }) {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                     <strong>Task Details:</strong> {req.task_details}
                   </p>
+
+                  {req.user_rating && (
+                    <div style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '0.5rem 0.75rem', borderRadius: '8px', fontSize: '0.82rem', color: '#f59e0b' }}>
+                      ⭐ <strong>Your Submitted Rating:</strong> {req.user_rating.rating}/5 stars {req.user_rating.review ? `("${req.user_rating.review}")` : ''}
+                    </div>
+                  )}
                 </div>
 
-                {/* Edit Button or Review Applicants */}
+                {/* Actions */}
                 <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {req.status === 'open' && req.application_count > 0 && (
                     <button
@@ -231,6 +268,16 @@ export default function PatientDashboard({ user }) {
                     </button>
                   )}
 
+                  {req.status === 'completed' && !req.user_rating && (
+                    <button
+                      onClick={() => handleOpenRatingModal(req)}
+                      className="btn btn-primary"
+                      style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', width: '100%', background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+                    >
+                      ⭐ Rate Companion Service
+                    </button>
+                  )}
+
                   {isEditable ? (
                     <button
                       onClick={() => handleOpenEditModal(req)}
@@ -239,7 +286,7 @@ export default function PatientDashboard({ user }) {
                     >
                       ✏️ Edit Request (Before Companion Applies)
                     </button>
-                  ) : req.status !== 'open' ? (
+                  ) : req.status === 'assigned' || req.status === 'in_progress' ? (
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
                       🔒 Assigned / In Duty
                     </span>
@@ -248,6 +295,56 @@ export default function PatientDashboard({ user }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {showRatingModal && selectedReqForRating && (
+        <div className="modal-overlay">
+          <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '440px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>⭐ Rate Companion Service</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Share your feedback for request: {selectedReqForRating.request_code}</p>
+              </div>
+              <button onClick={() => setShowRatingModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+            </div>
+
+            <form onSubmit={handleRatingSubmit}>
+              <div className="form-group" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                <label style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Select Rating Score</label>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', fontSize: '2rem', cursor: 'pointer' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span
+                      key={star}
+                      onClick={() => setRatingValue(star)}
+                      style={{ color: star <= ratingValue ? '#f59e0b' : '#475569', transition: 'color 0.15s ease' }}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#f59e0b', fontWeight: '700', marginTop: '0.35rem' }}>
+                  {ratingValue} / 5 Stars
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Review / Feedback (Optional)</label>
+                <textarea
+                  rows="3"
+                  className="form-textarea"
+                  placeholder="e.g. Companion was very polite, punctual, and helpful with the patient."
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                Submit Rating
+              </button>
+            </form>
+          </div>
         </div>
       )}
 

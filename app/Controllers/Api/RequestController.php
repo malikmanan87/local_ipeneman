@@ -7,6 +7,7 @@ use App\Models\RequestModel;
 use App\Models\UserModel;
 use App\Models\ApplicationModel;
 use App\Models\SettingModel;
+use App\Models\RatingModel;
 
 class RequestController extends ResourceController
 {
@@ -201,17 +202,89 @@ class RequestController extends ResourceController
                                  ->orderBy('id', 'DESC')
                                  ->findAll();
 
-        // Include application count for each request to inform frontend if editable
-        $appModel = new ApplicationModel();
+        // Include application count & rating for each request
+        $appModel    = new ApplicationModel();
+        $ratingModel = new RatingModel();
         foreach ($requests as &$req) {
             $req['application_count'] = $appModel->where('request_id', $req['id'])->countAllResults();
+            $existingRating = $ratingModel->where('request_id', $req['id'])->first();
+            $req['user_rating'] = $existingRating;
         }
 
         return $this->respond($requests);
     }
 
     /**
-     * Accept a companion applicant for a request
+     * Submit rating for a companion by patient/family
+     */
+    public function rateCompanion()
+    {
+        $requestId     = $this->request->getVar('request_id');
+        $ratedByUserId = $this->request->getVar('rated_by_user_id');
+        $ratingVal     = intval($this->request->getVar('rating'));
+        $review        = $this->request->getVar('review') ?? '';
+
+        if ($ratingVal < 1 || $ratingVal > 5) {
+            return $this->failValidationError('Rating must be between 1 and 5 stars.');
+        }
+
+        $requestModel = new RequestModel();
+        $requestData  = $requestModel->find($requestId);
+
+        if (!$requestData) {
+            return $this->failNotFound('Request not found.');
+        }
+
+        if ($requestData['status'] !== 'completed') {
+            return $this->failForbidden('Can only rate companion after duty shift is completed.');
+        }
+
+        $companionId = $requestData['assigned_companion_id'];
+        if (!$companionId) {
+            return $this->failValidationError('No assigned companion found for this request.');
+        }
+
+        $ratingModel = new RatingModel();
+        $existing = $ratingModel->where('request_id', $requestId)
+                                ->where('rated_by_user_id', $ratedByUserId)
+                                ->first();
+
+        if ($existing) {
+            return $this->fail('You have already submitted a rating for this completed duty.');
+        }
+
+        $ratingModel->insert([
+            'request_id'       => $requestId,
+            'companion_id'     => $companionId,
+            'rated_by_user_id' => $ratedByUserId,
+            'rating'           => $ratingVal,
+            'review'           => $review
+        ]);
+
+        // Recalculate companion rating_avg
+        $allRatings = $ratingModel->where('companion_id', $companionId)->findAll();
+        if (count($allRatings) > 0) {
+            $sum = 0;
+            foreach ($allRatings as $r) {
+                $sum += intval($r['rating']);
+            }
+            $avg = round($sum / count($allRatings), 2);
+
+            $compModel = new \App\Models\CompanionProfileModel();
+            $compProfile = $compModel->where('user_id', $companionId)->first();
+            if ($compProfile) {
+                $compModel->update($compProfile['id'], ['rating_avg' => $avg]);
+            }
+        }
+
+        return $this->respond([
+            'status'  => 200,
+            'message' => 'Thank you! Rating submitted successfully.'
+        ]);
+    }
+
+    /**
+     * Get list of companion applicants for a specific request
      */
     public function acceptCompanion()
     {

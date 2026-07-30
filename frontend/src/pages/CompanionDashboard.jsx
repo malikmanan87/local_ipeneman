@@ -26,6 +26,8 @@ export default function CompanionDashboard({ user }) {
   const [activeDutyForPass, setActiveDutyForPass] = useState(null);
   const [careNoteText, setCareNoteText] = useState({});
   const [activeTab, setActiveTab] = useState('duties');
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [selectedClaimDuty, setSelectedClaimDuty] = useState(null);
 
   const fetchCompanionData = async () => {
     setLoading(true);
@@ -195,6 +197,14 @@ export default function CompanionDashboard({ user }) {
                           ⏹ End Shift
                         </button>
                       )}
+                      {duty.status === 'completed' && (
+                        <button
+                          onClick={() => { setSelectedClaimDuty(duty); setShowClaimModal(true); }}
+                          style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.12)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
+                        >
+                          🧾 Resit E-Claim (RM {(parseFloat(duty.allowance_amount || 0) + parseFloat(duty.tip_amount || 0)).toFixed(2)})
+                        </button>
+                      )}
                     </div>
 
                     {/* Care Note */}
@@ -313,6 +323,64 @@ export default function CompanionDashboard({ user }) {
           companion={user}
           onClose={() => setActiveDutyForPass(null)}
         />
+      )}
+
+      {/* Modal: Resit E-Claim Peneman */}
+      {showClaimModal && selectedClaimDuty && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowClaimModal(false)}>
+          <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '520px', padding: '1.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🏥 HoSZA E-Claim Slip</div>
+                <h3 style={{ fontWeight: '800', fontSize: '1.15rem', marginTop: '0.2rem' }}>Penyata Tuntutan Elaun Shift</h3>
+              </div>
+              <button onClick={() => setShowClaimModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.85rem', lineHeight: '1.65' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>No. Rujukan Shift:</span>
+                <strong style={{ color: '#f59e0b', fontFamily: 'monospace' }}>{selectedClaimDuty.request_code}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Peneman:</span>
+                <strong style={{ color: '#f1f5f9' }}>{user.name} ({user.ic_number})</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Wad & Katil:</span>
+                <span>{selectedClaimDuty.ward_name} ({selectedClaimDuty.bed_number})</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Tarikh Shift:</span>
+                <span>{selectedClaimDuty.shift_date} ({selectedClaimDuty.start_time} – {selectedClaimDuty.end_time})</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Status Duty:</span>
+                <span style={{ color: '#34d399', fontWeight: '800' }}>✓ SELESAI & DISAHKAN</span>
+              </div>
+            </div>
+
+            {/* Financial Breakdown */}
+            <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.86rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                <span>Elaun Shift Asas:</span>
+                <span>RM {parseFloat(selectedClaimDuty.allowance_amount || 0).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem', color: '#fbbf24' }}>
+                <span>Tips / Bonus Waris:</span>
+                <span>+ RM {parseFloat(selectedClaimDuty.tip_amount || 0).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.1)', fontWeight: '900', fontSize: '1.05rem', color: '#34d399' }}>
+                <span>JUMLAH NET PAYOUT:</span>
+                <span>RM {(parseFloat(selectedClaimDuty.allowance_amount || 0) + parseFloat(selectedClaimDuty.tip_amount || 0)).toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
+              ℹ️ Bayaran elaun dikreditkan terus mengikut tetapan akaun kewangan peneman yang didaftarkan.
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

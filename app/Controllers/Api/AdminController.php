@@ -33,9 +33,14 @@ class AdminController extends ResourceController
         $allReqs = $requestModel->findAll();
         $totalCompletedPayout = 0;
         $totalPendingPayout   = 0;
+        $totalTips            = 0;
 
         foreach ($allReqs as $r) {
-            $amt = floatval($r['allowance_amount'] ?? 0) + floatval($r['tip_amount'] ?? 0);
+            $allowance = floatval($r['allowance_amount'] ?? 0);
+            $tip       = floatval($r['tip_amount'] ?? 0);
+            $amt       = $allowance + $tip;
+            $totalTips += $tip;
+
             if ($r['status'] === 'completed') {
                 $totalCompletedPayout += $amt;
             } else {
@@ -55,6 +60,7 @@ class AdminController extends ResourceController
                 'active_duties'          => $activeDuties,
                 'total_completed_payout' => number_format($totalCompletedPayout, 2, '.', ''),
                 'total_pending_payout'   => number_format($totalPendingPayout, 2, '.', ''),
+                'total_tips'             => number_format($totalTips, 2, '.', ''),
                 'grand_total_finance'    => number_format($totalCompletedPayout + $totalPendingPayout, 2, '.', ''),
             ]
         ]);

@@ -191,6 +191,52 @@ export default function AdminDashboard({ user }) {
     catch { alert('Failed to create request.'); }
   };
 
+  const handleExportCSV = () => {
+    if (!requests || requests.length === 0) {
+      alert('No financial data available to export.');
+      return;
+    }
+
+    const headers = ['Pass Code', 'Status', 'Companion Name', 'Companion IC', 'UniSZA ID', 'Patient Name', 'Patient RN', 'Ward', 'Bed', 'Shift Date', 'Start Time', 'End Time', 'Base Allowance (RM)', 'Tips (RM)', 'Total Payout (RM)', 'Payout Status'];
+
+    const rows = requests.map(r => {
+      const base = parseFloat(r.allowance_amount || 0);
+      const tip = parseFloat(r.tip_amount || 0);
+      const total = base + tip;
+      let payoutStatus = 'Unassigned';
+      if (r.status === 'completed') payoutStatus = 'Disbursed / Paid';
+      else if (r.assigned_companion_id) payoutStatus = 'Pending Shift';
+
+      return [
+        `"${r.request_code || ''}"`,
+        `"${r.status || ''}"`,
+        `"${r.companion?.name || ''}"`,
+        `"${r.companion?.ic_number || ''}"`,
+        `"${r.companion?.companion_profile?.student_staff_id || ''}"`,
+        `"${r.patient_name || ''}"`,
+        `"${r.patient_rn || ''}"`,
+        `"${r.ward_name || ''}"`,
+        `"${r.bed_number || ''}"`,
+        `"${r.shift_date || ''}"`,
+        `"${r.start_time || ''}"`,
+        `"${r.end_time || ''}"`,
+        base.toFixed(2),
+        tip.toFixed(2),
+        total.toFixed(2),
+        `"${payoutStatus}"`
+      ].join(',');
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `HoSZA_Financial_Ledger_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const activeDutiesList = requests.filter(r => r.status === 'in_progress' || r.status === 'assigned');
 
   // Accurate counts from actual allUsers list
@@ -246,6 +292,7 @@ export default function AdminDashboard({ user }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
           {[
             { label: 'Ward Requests',     value: stats.total_requests,    sub: 'All time',              icon: '📋', color: '#f59e0b', tab: 'requests' },
+            { label: 'Financial Ledger',  value: `RM ${parseFloat(stats.grand_total_finance || 0).toFixed(0)}`, sub: `RM ${parseFloat(stats.total_completed_payout || 0).toFixed(0)} disbursed`, icon: '💵', color: '#34d399', tab: 'finance' },
             { label: 'Pending Approvals', value: stats.pending_approvals, sub: 'Awaiting admin review', icon: '🔔', color: '#f472b6', tab: 'approvals', alert: stats.pending_approvals > 0 },
             { label: 'Total Users',       value: stats.total_users,       sub: `${stats.total_companions} companions · ${stats.total_families} family`, icon: '👥', color: '#38bdf8', tab: 'users' },
           ].map(s => (
@@ -419,6 +466,173 @@ export default function AdminDashboard({ user }) {
                   </table>
                 </div>
               )}
+            </div>
+          );
+        })()}
+
+        {/* ── Tab: Financial Ledger & Payout Oversight ── */}
+        {activeTab === 'finance' && (() => {
+          const [financeFilter, setFinanceFilter] = useState('all');
+
+          const filteredFinanceRequests = requests.filter(r => {
+            if (financeFilter === 'completed') return r.status === 'completed';
+            if (financeFilter === 'pending') return r.status === 'in_progress' || r.status === 'assigned';
+            if (financeFilter === 'open') return r.status === 'open';
+            return true;
+          });
+
+          return (
+            <div className="animate-fade-in">
+              {/* Financial KPI Summary Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #34d399' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Disbursed Payout (Completed)</div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: '800', color: '#34d399', marginTop: '0.2rem' }}>
+                    RM {parseFloat(stats.total_completed_payout || 0).toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '0.25rem' }}>Full duty completed & verified</div>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #fbbf24' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Pending Shift Payout</div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: '800', color: '#fbbf24', marginTop: '0.2rem' }}>
+                    RM {parseFloat(stats.total_pending_payout || 0).toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '0.25rem' }}>Reserved for active/open shifts</div>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #38bdf8' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Grand Total Finance Value</div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: '800', color: '#38bdf8', marginTop: '0.2rem' }}>
+                    RM {parseFloat(stats.grand_total_finance || 0).toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '0.25rem' }}>All-time total shift value</div>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #a78bfa' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Total Tips / Bonus Collected</div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: '800', color: '#a78bfa', marginTop: '0.2rem' }}>
+                    RM {parseFloat(stats.total_tips || 0).toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '0.25rem' }}>Optional tips from patient family</div>
+                </div>
+              </div>
+
+              {/* Main Ledger Table Panel */}
+              <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
+                <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>💵 HoSZA Shift Financial Ledger</h2>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Showing {filteredFinanceRequests.length} shift transactions</div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Status Filter Pills */}
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      {[
+                        { key: 'all',       label: 'All Shifts' },
+                        { key: 'completed', label: 'Disbursed' },
+                        { key: 'pending',   label: 'Pending' },
+                        { key: 'open',      label: 'Unassigned' },
+                      ].map(f => (
+                        <button
+                          key={f.key}
+                          onClick={() => setFinanceFilter(f.key)}
+                          style={{
+                            padding: '0.35rem 0.8rem', borderRadius: '9999px', fontSize: '0.78rem',
+                            fontWeight: '700', cursor: 'pointer',
+                            background: financeFilter === f.key ? '#34d399' : 'rgba(255,255,255,0.07)',
+                            color: financeFilter === f.key ? '#0f172a' : 'var(--text-muted)',
+                            border: 'none', transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Export CSV Button */}
+                    <button
+                      onClick={handleExportCSV}
+                      className="btn btn-primary"
+                      style={{ fontSize: '0.8rem', padding: '0.45rem 1rem', background: 'linear-gradient(135deg, #059669, #10b981)', whiteSpace: 'nowrap' }}
+                    >
+                      📥 Export CSV Report
+                    </button>
+                  </div>
+                </div>
+
+                {filteredFinanceRequests.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>No financial transactions found for this filter.</div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                          {['Pass Code', 'Companion / Staff', 'Patient & Ward', 'Shift Date', 'Base (RM)', 'Tips (RM)', 'Total Payout', 'Payout Status', ''].map(h => (
+                            <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredFinanceRequests.map((req, i) => {
+                          const base = parseFloat(req.allowance_amount || 0);
+                          const tip = parseFloat(req.tip_amount || 0);
+                          const total = base + tip;
+
+                          return (
+                            <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                              <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
+                              <td style={{ padding: '0.85rem 1rem' }}>
+                                {req.companion ? (
+                                  <div>
+                                    <div style={{ fontWeight: '700', color: '#f1f5f9' }}>{req.companion.name}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                      IC: {req.companion.ic_number} {req.companion.companion_profile?.student_staff_id && `· 🎓 ${req.companion.companion_profile.student_staff_id}`}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)', italic: 'true', fontSize: '0.8rem' }}>Not assigned yet</span>
+                                )}
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem' }}>
+                                <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
+                                <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.ward_name} ({req.bed_number})</div>
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
+                                <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</div>
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.83rem' }}>RM {base.toFixed(2)}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.83rem', color: '#fbbf24' }}>RM {tip.toFixed(2)}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontWeight: '900', color: '#34d399', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                RM {total.toFixed(2)}
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem' }}>
+                                {req.status === 'completed' ? (
+                                  <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#34d399', background: 'rgba(5,150,105,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>✓ DISBURSED</span>
+                                ) : req.assigned_companion_id ? (
+                                  <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#fbbf24', background: 'rgba(245,158,11,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>⏳ PENDING SHIFT</span>
+                                ) : (
+                                  <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#94a3b8', background: 'rgba(100,116,139,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>UNASSIGNED</span>
+                                )}
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem' }}>
+                                <button
+                                  onClick={() => { setSelectedDetailRequest(req); setShowDetailModal(true); }}
+                                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.08)', color: '#38bdf8', cursor: 'pointer', fontWeight: '700' }}
+                                >
+                                  📄 Details
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })()}

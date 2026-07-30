@@ -108,10 +108,39 @@ class AdminController extends ResourceController
             $rating = $ratingModel->where('request_id', $req['id'])->first();
             $req['rating'] = $rating ?: null;
 
+            // Calculate actual worked hours & pro-rated claim allowance
+            $scheduledStart = strtotime($req['shift_date'] . ' ' . $req['start_time']);
+            $scheduledEnd   = strtotime($req['shift_date'] . ' ' . $req['end_time']);
+            $scheduledSecs  = max(3600, $scheduledEnd - $scheduledStart);
+            $scheduledHours = max(1, round($scheduledSecs / 3600, 2));
+
+            $allowanceBase = floatval($req['allowance_amount'] ?? 0);
+            $tipAmount     = floatval($req['tip_amount'] ?? 0);
+            $hourlyRate    = $allowanceBase / $scheduledHours;
+
+            $actualWorkedHours = $scheduledHours;
+            $actualAllowance   = $allowanceBase;
+
+            if ($dutyLog && !empty($dutyLog['check_in']) && !empty($dutyLog['check_out'])) {
+                $checkInTs  = strtotime($dutyLog['check_in']);
+                $checkOutTs = strtotime($dutyLog['check_out']);
+                $workedSecs = max(60, $checkOutTs - $checkInTs);
+                $actualWorkedHours = round($workedSecs / 3600, 2);
+
+                if ($actualWorkedHours < $scheduledHours) {
+                    $actualAllowance = round($actualWorkedHours * $hourlyRate, 2);
+                } else {
+                    $actualAllowance = $allowanceBase;
+                }
+            }
+
+            $req['scheduled_hours']         = $scheduledHours;
+            $req['actual_worked_hours']     = $actualWorkedHours;
+            $req['actual_allowance_amount'] = number_format($actualAllowance, 2, '.', '');
+            $req['actual_total_payout']     = number_format($actualAllowance + $tipAmount, 2, '.', '');
+            $req['hourly_rate']             = number_format($hourlyRate, 2, '.', '');
+
             // Finance details
-            $allowance = floatval($req['allowance_amount'] ?? 0);
-            $tip       = floatval($req['tip_amount'] ?? 0);
-            $total     = $allowance + $tip;
             $statusStr = 'Unassigned';
             if ($req['status'] === 'completed') {
                 $statusStr = 'Disbursed / Paid';
@@ -120,9 +149,9 @@ class AdminController extends ResourceController
             }
 
             $req['finance'] = [
-                'allowance_amount' => number_format($allowance, 2, '.', ''),
-                'tip_amount'       => number_format($tip, 2, '.', ''),
-                'total_payout'     => number_format($total, 2, '.', ''),
+                'allowance_amount' => number_format($actualAllowance, 2, '.', ''),
+                'tip_amount'       => number_format($tipAmount, 2, '.', ''),
+                'total_payout'     => number_format($actualAllowance + $tipAmount, 2, '.', ''),
                 'payment_status'   => $statusStr
             ];
         }

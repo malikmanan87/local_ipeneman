@@ -175,7 +175,15 @@ export default function CompanionDashboard({ user }) {
                     <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
                       <p>🛏️ Bed: <strong style={{ color: '#f1f5f9' }}>{duty.bed_number}</strong></p>
                       <p>👴 Patient: <strong style={{ color: '#f1f5f9' }}>{duty.patient_name}</strong> (Age {duty.patient_age})</p>
-                      <p>🗓️ {duty.shift_date} · {duty.start_time} – {duty.end_time}</p>
+                      <p>🗓️ Shift Dijadualkan: {duty.shift_date} ({duty.start_time} – {duty.end_time})</p>
+                      {duty.duty_log && (duty.duty_log.check_in || duty.duty_log.check_out) && (
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.75rem', borderRadius: '8px', marginTop: '0.4rem', marginBottom: '0.4rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                          <p style={{ color: '#38bdf8', fontWeight: '700', fontSize: '0.78rem' }}>🕒 Rekod Waktu Sebenar:</p>
+                          <p style={{ fontSize: '0.76rem' }}>Check-In: <strong style={{ color: '#34d399' }}>{duty.duty_log.check_in || '—'}</strong></p>
+                          <p style={{ fontSize: '0.76rem' }}>Check-Out: <strong style={{ color: '#f87171' }}>{duty.duty_log.check_out || '—'}</strong></p>
+                          <p style={{ fontSize: '0.76rem', color: '#fbbf24', fontWeight: '700', marginTop: '0.15rem' }}>⏱️ Jam Kerja Sebenar: {duty.actual_worked_hours} jam</p>
+                        </div>
+                      )}
                       <p style={{ marginTop: '0.25rem' }}>📌 {duty.task_details}</p>
                     </div>
 
@@ -202,7 +210,7 @@ export default function CompanionDashboard({ user }) {
                           onClick={() => { setSelectedClaimDuty(duty); setShowClaimModal(true); }}
                           style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.12)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
                         >
-                          🧾 Resit E-Claim (RM {(parseFloat(duty.allowance_amount || 0) + parseFloat(duty.tip_amount || 0)).toFixed(2)})
+                          🧾 Resit E-Claim (RM {duty.actual_total_payout || (parseFloat(duty.allowance_amount || 0) + parseFloat(duty.tip_amount || 0)).toFixed(2)})
                         </button>
                       )}
                     </div>
@@ -351,33 +359,48 @@ export default function CompanionDashboard({ user }) {
                 <span>{selectedClaimDuty.ward_name} ({selectedClaimDuty.bed_number})</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Tarikh Shift:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Shift Dijadualkan:</span>
                 <span>{selectedClaimDuty.shift_date} ({selectedClaimDuty.start_time} – {selectedClaimDuty.end_time})</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Status Duty:</span>
-                <span style={{ color: '#34d399', fontWeight: '800' }}>✓ SELESAI & DISAHKAN</span>
+              
+              {/* Actual Check-In & Check-Out Timestamps */}
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Waktu Check-In Sebenar:</span>
+                  <strong style={{ color: '#34d399' }}>{selectedClaimDuty.duty_log?.check_in ? selectedClaimDuty.duty_log.check_in : '—'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Waktu Check-Out Sebenar:</span>
+                  <strong style={{ color: '#f87171' }}>{selectedClaimDuty.duty_log?.check_out ? selectedClaimDuty.duty_log.check_out : '—'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Jumlah Jam Kerja Sebenar:</span>
+                  <strong style={{ color: '#38bdf8' }}>{selectedClaimDuty.actual_worked_hours || selectedClaimDuty.scheduled_hours} Jam</strong>
+                </div>
               </div>
             </div>
 
-            {/* Financial Breakdown */}
+            {/* Financial Breakdown (Based on Actual Hours Worked) */}
             <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.86rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.6rem' }}>
+                💰 Tuntutan Berdasarkan Jam Kerja Sebenar (RM {selectedClaimDuty.hourly_rate || '10.00'}/jam)
+              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                <span>Elaun Shift Asas:</span>
-                <span>RM {parseFloat(selectedClaimDuty.allowance_amount || 0).toFixed(2)}</span>
+                <span>Elaun Asas ({selectedClaimDuty.actual_worked_hours || selectedClaimDuty.scheduled_hours} jam):</span>
+                <span>RM {selectedClaimDuty.actual_allowance_amount || selectedClaimDuty.allowance_amount}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem', color: '#fbbf24' }}>
                 <span>Tips / Bonus Waris:</span>
                 <span>+ RM {parseFloat(selectedClaimDuty.tip_amount || 0).toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.1)', fontWeight: '900', fontSize: '1.05rem', color: '#34d399' }}>
-                <span>JUMLAH NET PAYOUT:</span>
-                <span>RM {(parseFloat(selectedClaimDuty.allowance_amount || 0) + parseFloat(selectedClaimDuty.tip_amount || 0)).toFixed(2)}</span>
+                <span>JUMLAH TUNTUTAN SEBENAR:</span>
+                <span>RM {selectedClaimDuty.actual_total_payout || selectedClaimDuty.allowance_amount}</span>
               </div>
             </div>
 
             <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
-              ℹ️ Bayaran elaun dikreditkan terus mengikut tetapan akaun kewangan peneman yang didaftarkan.
+              ℹ️ Resit tuntutan dijana berdasarkan waktu check-in dan check-out sebenar yang diimbas di Wad HoSZA.
             </div>
           </div>
         </div>

@@ -62,9 +62,64 @@ class CompanionController extends ResourceController
     public function myDuties($companionId = null)
     {
         $requestModel = new RequestModel();
+        $dutyLogModel = new DutyLogModel();
+
         $duties = $requestModel->where('assigned_companion_id', $companionId)
                                ->orderBy('shift_date', 'DESC')
                                ->findAll();
+
+        foreach ($duties as &$d) {
+            $log = $dutyLogModel->where('request_id', $d['id'])
+                                ->where('companion_id', $companionId)
+                                ->orderBy('id', 'DESC')
+                                ->first();
+
+            if ($log) {
+                $parsedNotes = [];
+                if (!empty($log['care_notes'])) {
+                    $parsed = json_decode($log['care_notes'], true);
+                    if (is_array($parsed)) {
+                        $parsedNotes = $parsed;
+                    }
+                }
+                $log['care_notes_list'] = $parsedNotes;
+                $d['duty_log'] = $log;
+            } else {
+                $d['duty_log'] = null;
+            }
+
+            // Calculate actual worked hours & pro-rated claim allowance based on actual check-in & check-out
+            $scheduledStart = strtotime($d['shift_date'] . ' ' . $d['start_time']);
+            $scheduledEnd   = strtotime($d['shift_date'] . ' ' . $d['end_time']);
+            $scheduledSecs  = max(3600, $scheduledEnd - $scheduledStart);
+            $scheduledHours = max(1, round($scheduledSecs / 3600, 2));
+
+            $allowanceBase = floatval($d['allowance_amount'] ?? 0);
+            $tipAmount     = floatval($d['tip_amount'] ?? 0);
+            $hourlyRate    = $allowanceBase / $scheduledHours;
+
+            $actualWorkedHours = $scheduledHours;
+            $actualAllowance   = $allowanceBase;
+
+            if ($log && !empty($log['check_in']) && !empty($log['check_out'])) {
+                $checkInTs  = strtotime($log['check_in']);
+                $checkOutTs = strtotime($log['check_out']);
+                $workedSecs = max(60, $checkOutTs - $checkInTs);
+                $actualWorkedHours = round($workedSecs / 3600, 2);
+
+                if ($actualWorkedHours < $scheduledHours) {
+                    $actualAllowance = round($actualWorkedHours * $hourlyRate, 2);
+                } else {
+                    $actualAllowance = $allowanceBase;
+                }
+            }
+
+            $d['scheduled_hours']         = $scheduledHours;
+            $d['actual_worked_hours']     = $actualWorkedHours;
+            $d['actual_allowance_amount'] = number_format($actualAllowance, 2, '.', '');
+            $d['actual_total_payout']     = number_format($actualAllowance + $tipAmount, 2, '.', '');
+            $d['hourly_rate']             = number_format($hourlyRate, 2, '.', '');
+        }
 
         return $this->respond($duties);
     }

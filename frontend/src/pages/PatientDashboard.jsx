@@ -275,6 +275,23 @@ export default function PatientDashboard({ user }) {
                   onChange={(e) => setFormData({ ...formData, allowance_amount: parseFloat(e.target.value) })}
                   required
                 />
+                {(() => {
+                  if (formData.start_time && formData.end_time) {
+                    const [sH, sM] = formData.start_time.split(':').map(Number);
+                    const [eH, eM] = formData.end_time.split(':').map(Number);
+                    let diffHours = (eH + eM/60) - (sH + sM/60);
+                    if (diffHours < 0) diffHours += 24;
+                    if (diffHours > 0) {
+                      const hourlyRate = (formData.allowance_amount / diffHours).toFixed(2);
+                      return (
+                        <div style={{ fontSize: '0.8rem', marginTop: '0.4rem', background: 'rgba(5, 150, 105, 0.15)', border: '1px solid rgba(5, 150, 105, 0.4)', padding: '0.4rem 0.75rem', borderRadius: '8px', color: '#34d399' }}>
+                          💡 <strong>Shift Duration:</strong> {diffHours.toFixed(1)} hours | <strong>Estimated Hourly Rate:</strong> RM {hourlyRate} / hr
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
               </div>
 
               <div className="form-group">

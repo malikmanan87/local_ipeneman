@@ -19,20 +19,26 @@ class AdminController extends ResourceController
     {
         $userModel    = new UserModel();
         $requestModel = new RequestModel();
-        $dutyLogModel = new DutyLogModel();
 
-        $totalCompanions = $userModel->where('role', 'companion')->countAllResults();
-        $totalRequests   = $requestModel->countAllResults();
-        $activeDuties    = $requestModel->where('status', 'in_progress')->countAllResults();
-        $onBehalfCount   = $requestModel->where('created_by_role', 'admin')->countAllResults();
+        $totalUsers       = $userModel->countAllResults(false);
+        $totalCompanions  = $userModel->where('role', 'companion')->countAllResults(false);
+        $totalFamilies    = $userModel->where('role', 'user')->countAllResults(false);
+        $totalStaff       = $userModel->whereIn('role', ['staff', 'admin'])->countAllResults(false);
+        $pendingApprovals = $userModel->where('is_verified', 0)->countAllResults(false);
+
+        $totalRequests = $requestModel->countAllResults(false);
+        $activeDuties  = $requestModel->where('status', 'in_progress')->countAllResults(false);
 
         return $this->respond([
             'status' => 200,
             'stats'  => [
-                'total_companions' => $totalCompanions,
-                'total_requests'   => $totalRequests,
-                'active_duties'    => $activeDuties,
-                'on_behalf_count'  => $onBehalfCount,
+                'total_users'       => $totalUsers,
+                'total_companions'  => $totalCompanions,
+                'total_families'    => $totalFamilies,
+                'total_staff'       => $totalStaff,
+                'pending_approvals' => $pendingApprovals,
+                'total_requests'    => $totalRequests,
+                'active_duties'     => $activeDuties,
             ]
         ]);
     }
@@ -203,6 +209,30 @@ class AdminController extends ResourceController
             'status' => 200,
             'total'  => count($unverifiedUsers),
             'data'   => $unverifiedUsers
+        ]);
+    }
+
+    /**
+     * Get list of all registered users across all roles (Admin, Staff, Companion, User/Family)
+     */
+    public function allUsers()
+    {
+        $userModel = new UserModel();
+        $compModel = new \App\Models\CompanionProfileModel();
+
+        $users = $userModel->orderBy('id', 'DESC')->findAll();
+
+        foreach ($users as &$u) {
+            unset($u['password']);
+            if ($u['role'] === 'companion') {
+                $u['companion_profile'] = $compModel->where('user_id', $u['id'])->first();
+            }
+        }
+
+        return $this->respond([
+            'status' => 200,
+            'total'  => count($users),
+            'data'   => $users
         ]);
     }
 

@@ -7,15 +7,26 @@ import CompanionDashboard from './pages/CompanionDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  // Restore user session from localStorage if available upon refresh
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('ipeneman_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (err) {
+      return null;
+    }
+  });
+
   const [activeTab, setActiveTab] = useState('login');
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
+    localStorage.setItem('ipeneman_user', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
     setUser(null);
+    localStorage.removeItem('ipeneman_user');
     setActiveTab('login');
   };
 

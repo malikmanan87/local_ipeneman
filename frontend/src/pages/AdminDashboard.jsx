@@ -563,7 +563,7 @@ export default function AdminDashboard({ user }) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                       <thead>
                         <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                          {['Pass Code', 'Companion / Staff', 'Patient & Ward', 'Shift Date', 'Base (RM)', 'Tips (RM)', 'Total Payout', 'Payout Status', ''].map(h => (
+                          {['Pass Code', 'Companion / Staff', 'Patient & Ward', 'Shift Date', 'Base (RM)', 'Tips (RM)', 'Total Payout', 'Payout Status'].map(h => (
                             <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
                         </tr>
@@ -610,14 +610,6 @@ export default function AdminDashboard({ user }) {
                                 ) : (
                                   <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#94a3b8', background: 'rgba(100,116,139,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>UNASSIGNED</span>
                                 )}
-                              </td>
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                <button
-                                  onClick={() => { setSelectedDetailRequest(req); setShowDetailModal(true); }}
-                                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.08)', color: '#38bdf8', cursor: 'pointer', fontWeight: '700' }}
-                                >
-                                  📄 Details
-                                </button>
                               </td>
                             </tr>
                           );

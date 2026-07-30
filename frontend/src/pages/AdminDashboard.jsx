@@ -318,39 +318,7 @@ export default function AdminDashboard({ user }) {
           ))}
         </div>
 
-        {/* ── Finance & Rate Summary Banner ── */}
-        <div className="glass-panel" style={{ padding: '1.1rem 1.35rem', marginBottom: '1.75rem', borderLeft: '4px solid #34d399', background: 'linear-gradient(135deg, rgba(5,150,105,0.08), rgba(15,23,42,0.6))' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>
-                💵 Financial Payout Oversight (Shift Earnings)
-              </div>
-              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.86rem', marginTop: '0.35rem' }}>
-                <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Disbursed Payout: </span>
-                  <strong style={{ color: '#34d399', fontSize: '1.05rem' }}>RM {parseFloat(stats.total_completed_payout || 0).toFixed(2)}</strong>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Pending Shift Payout: </span>
-                  <strong style={{ color: '#fbbf24', fontSize: '1.05rem' }}>RM {parseFloat(stats.total_pending_payout || 0).toFixed(2)}</strong>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Grand Total Value: </span>
-                  <strong style={{ color: '#38bdf8', fontSize: '1.05rem' }}>RM {parseFloat(stats.grand_total_finance || 0).toFixed(2)}</strong>
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-                <div>Hourly Rate: <strong style={{ color: '#f1f5f9' }}>RM {parseFloat(rateSettings.default_hourly_rate || 10).toFixed(2)}/hr</strong></div>
-                <div style={{ fontSize: '0.73rem' }}>Range: RM {parseFloat(rateSettings.min_hourly_rate || 8).toFixed(2)} – {parseFloat(rateSettings.max_hourly_rate || 30).toFixed(2)}</div>
-              </div>
-              <button onClick={() => setShowSettingsModal(true)} className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.45rem 0.85rem' }}>
-                ⚙️ Rate Settings
-              </button>
-            </div>
-          </div>
-        </div>
+
 
         {/* ── Tab: Ward Requests ── */}
         {activeTab === 'requests' && (() => {

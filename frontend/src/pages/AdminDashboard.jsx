@@ -86,6 +86,7 @@ function VerifyPassResult({ result }) {
 
 export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState({ total_users: 0, total_companions: 0, total_families: 0, total_staff: 0, pending_approvals: 0, total_requests: 0, active_duties: 0 });
+  const [activeTab, setActiveTab] = useState('requests');
   const [roleFilter, setRoleFilter] = useState('all');
   const [requests, setRequests] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -188,7 +189,7 @@ export default function AdminDashboard({ user }) {
 
   const activeDutiesList = requests.filter(r => r.status === 'in_progress' || r.status === 'assigned');
 
-  // Accurate counts calculated from actual allUsers list
+  // Accurate counts from actual allUsers list
   const userCounts = {
     all:       allUsers.length,
     companion: allUsers.filter(u => u.role === 'companion').length,
@@ -202,18 +203,12 @@ export default function AdminDashboard({ user }) {
     return u.role === roleFilter;
   });
 
-  const SectionHeader = ({ icon, title, count, color = '#f1f5f9' }) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-      <h2 style={{ fontSize: '1.05rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <span>{icon}</span> {title}
-      </h2>
-      {count !== undefined && (
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '0.2rem 0.65rem', borderRadius: '9999px' }}>
-          {count} records
-        </span>
-      )}
-    </div>
-  );
+  const TABS = [
+    { key: 'requests',      label: 'Ward Requests',    icon: '📋', count: requests.length,        color: '#f59e0b' },
+    { key: 'active_duties', label: 'Active Shifts',    icon: '🔄', count: activeDutiesList.length, color: '#34d399' },
+    { key: 'approvals',     label: 'Pending Approvals',icon: '🔔', count: unverifiedUsers.length,  color: '#f472b6' },
+    { key: 'users',         label: 'User Directory',   icon: '👥', count: allUsers.length,         color: '#38bdf8' },
+  ];
 
   return (
     <div style={{ background: 'var(--bg-dark)', minHeight: '100vh' }}>
@@ -246,12 +241,21 @@ export default function AdminDashboard({ user }) {
         {/* ── Stat Cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
           {[
-            { label: 'Total Users',        value: stats.total_users,       sub: `${stats.total_companions} companions · ${stats.total_families} family`, icon: '👥', color: '#38bdf8' },
-            { label: 'Ward Requests',      value: stats.total_requests,    sub: 'All time',               icon: '📋', color: '#f59e0b' },
-            { label: 'Active Shifts',      value: stats.active_duties,     sub: 'Currently on duty',      icon: '🔄', color: '#34d399' },
-            { label: 'Pending Approvals',  value: stats.pending_approvals, sub: 'Awaiting admin review',  icon: '🔔', color: '#f472b6', alert: stats.pending_approvals > 0 },
+            { label: 'Total Users',       value: stats.total_users,       sub: `${stats.total_companions} companions · ${stats.total_families} family`, icon: '👥', color: '#38bdf8', tab: 'users' },
+            { label: 'Ward Requests',     value: stats.total_requests,    sub: 'All time',              icon: '📋', color: '#f59e0b', tab: 'requests' },
+            { label: 'Active Shifts',     value: stats.active_duties,     sub: 'Currently on duty',     icon: '🔄', color: '#34d399', tab: 'active_duties' },
+            { label: 'Pending Approvals', value: stats.pending_approvals, sub: 'Awaiting admin review', icon: '🔔', color: '#f472b6', tab: 'approvals', alert: stats.pending_approvals > 0 },
           ].map(s => (
-            <div key={s.label} className="glass-panel" style={{ padding: '1.4rem 1.5rem', position: 'relative', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+            <div
+              key={s.tab}
+              onClick={() => setActiveTab(s.tab)}
+              className="glass-panel"
+              style={{
+                padding: '1.4rem 1.5rem', cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                border: activeTab === s.tab ? `1.5px solid ${s.color}` : '1px solid var(--glass-border)',
+                transition: 'all 0.2s ease',
+              }}
+            >
               {s.alert && (
                 <span style={{ position: 'absolute', top: '0.85rem', right: '0.85rem', width: '8px', height: '8px', borderRadius: '50%', background: '#f472b6', boxShadow: '0 0 8px #f472b6' }} />
               )}
@@ -264,7 +268,7 @@ export default function AdminDashboard({ user }) {
         </div>
 
         {/* ── Rate Banner ── */}
-        <div className="glass-panel" style={{ padding: '0.9rem 1.35rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid #34d399' }}>
+        <div className="glass-panel" style={{ padding: '0.9rem 1.35rem', marginBottom: '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid #34d399' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
             <strong style={{ color: '#34d399' }}>💰 Hourly Rate:</strong>{' '}
             <strong style={{ color: '#f1f5f9' }}>RM {parseFloat(rateSettings.default_hourly_rate || 10).toFixed(2)}/hr</strong>
@@ -273,12 +277,35 @@ export default function AdminDashboard({ user }) {
           <button onClick={() => setShowSettingsModal(true)} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.82rem', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>Edit Rates</button>
         </div>
 
-        {/* ══════════════════════════════════════
-            SECTION 1 — Ward Requests
-        ══════════════════════════════════════ */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <SectionHeader icon="📋" title="Ward Requests Overview" count={requests.length} />
-          <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* ── Tab Bar ── */}
+        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              style={{
+                padding: '0.5rem 1.1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer',
+                border: activeTab === t.key ? `1.5px solid ${t.color}` : '1.5px solid transparent',
+                background: activeTab === t.key ? `${t.color}18` : 'rgba(255,255,255,0.05)',
+                color: activeTab === t.key ? t.color : 'var(--text-muted)',
+                transition: 'all 0.18s ease',
+              }}
+            >
+              {t.icon} {t.label}
+              <span style={{ marginLeft: '0.4rem', background: activeTab === t.key ? `${t.color}30` : 'rgba(255,255,255,0.08)', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontSize: '0.75rem' }}>
+                {t.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab: Ward Requests ── */}
+        {activeTab === 'requests' && (
+          <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 Ward Requests Overview</h2>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{requests.length} total records</span>
+            </div>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
             ) : requests.length === 0 ? (
@@ -338,16 +365,16 @@ export default function AdminDashboard({ user }) {
               </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* ══════════════════════════════════════
-            SECTION 2 — Active Shifts
-        ══════════════════════════════════════ */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <SectionHeader icon="🔄" title="Active Ward Duty Shifts" count={activeDutiesList.length} />
-          <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* ── Tab: Active Shifts ── */}
+        {activeTab === 'active_duties' && (
+          <div className="glass-panel animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>🔄 Active Ward Duty Shifts</h2>
+            </div>
             {activeDutiesList.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No active shifts at this time.</div>
+              <div style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>No active shifts at this time.</div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
@@ -386,134 +413,132 @@ export default function AdminDashboard({ user }) {
               </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* ══════════════════════════════════════
-            SECTION 3 — Pending Approvals
-        ══════════════════════════════════════ */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <SectionHeader icon="🔔" title="Pending Account Approvals" count={unverifiedUsers.length} />
-          {unverifiedUsers.length === 0 ? (
-            <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-              ✓ All accounts are verified. No pending registrations.
+        {/* ── Tab: Pending Approvals ── */}
+        {activeTab === 'approvals' && (
+          <div className="animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#f472b6' }}>🔔 Pending Account Registrations ({unverifiedUsers.length})</h2>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              {unverifiedUsers.map(acc => (
-                <div key={acc.id} className="glass-panel" style={{ padding: '1.25rem 1.5rem', borderLeft: '3px solid #f472b6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontWeight: '800', fontSize: '1rem' }}>{acc.name}</span>
-                      <RoleBadge role={acc.role} />
-                      <span style={{ fontSize: '0.73rem', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', padding: '0.15rem 0.55rem', borderRadius: '9999px', fontWeight: '700' }}>PENDING</span>
-                    </div>
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                      <span>🪪 {acc.ic_number}</span>
-                      <span style={{ margin: '0 0.5rem' }}>·</span>
-                      <span>{acc.gender === 'L' ? '🔵 Male' : '🩷 Female'}</span>
-                      <span style={{ margin: '0 0.5rem' }}>·</span>
-                      <span>📧 {acc.email}</span>
-                      <span style={{ margin: '0 0.5rem' }}>·</span>
-                      <span>📱 {acc.phone}</span>
-                      {acc.companion_profile?.student_staff_id && (
-                        <><span style={{ margin: '0 0.5rem' }}>·</span><span style={{ color: '#34d399' }}>🎓 {acc.companion_profile.student_staff_id}</span></>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => handleApproveUser(acc.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
-                      ✓ Approve
-                    </button>
-                    <button onClick={() => handleRejectUser(acc.id)} style={{ fontSize: '0.82rem', padding: '0.5rem 1rem', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>
-                      ✕ Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ══════════════════════════════════════
-            SECTION 4 — User Directory
-        ══════════════════════════════════════ */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>👥 Registered Users Directory</h2>
-            {/* Role Filter Pills — counts derived from actual allUsers array */}
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-              {[
-                { key: 'all',       label: 'All',       count: userCounts.all       },
-                { key: 'companion', label: 'Companions', count: userCounts.companion },
-                { key: 'user',      label: 'Family',     count: userCounts.user      },
-                { key: 'staff',     label: 'Staff',      count: userCounts.staff     },
-                { key: 'admin',     label: 'Admin',      count: userCounts.admin     },
-              ].map(f => (
-                <button
-                  key={f.key}
-                  onClick={() => setRoleFilter(f.key)}
-                  style={{
-                    padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
-                    fontWeight: '700', cursor: 'pointer',
-                    background: roleFilter === f.key ? '#38bdf8' : 'rgba(255,255,255,0.07)',
-                    color: roleFilter === f.key ? '#0f172a' : 'var(--text-muted)',
-                    border: 'none', transition: 'all 0.15s ease',
-                  }}
-                >
-                  {f.label} <span style={{ opacity: 0.75 }}>({f.count})</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
-            ) : filteredUsers.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No users found for this filter.</div>
+            {unverifiedUsers.length === 0 ? (
+              <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
+                ✓ All accounts are verified. No pending registrations.
+              </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
-                  <thead>
-                    <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                      {['Name', 'IC / MyKad', 'Gender', 'Role', 'Contact', 'UniSZA ID', 'Account'].map(h => (
-                        <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map((u, i) => (
-                      <tr key={u.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                        <td style={{ padding: '0.85rem 1rem', fontWeight: '700' }}>{u.name}</td>
-                        <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{u.ic_number}</td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          {u.gender === 'L'
-                            ? <span style={{ color: '#60a5fa', fontWeight: '700', fontSize: '0.8rem' }}>🔵 Male</span>
-                            : <span style={{ color: '#f472b6', fontWeight: '700', fontSize: '0.8rem' }}>🩷 Female</span>
-                          }
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem' }}><RoleBadge role={u.role} /></td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          <div style={{ fontSize: '0.82rem' }}>{u.email}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{u.phone}</div>
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem', color: u.companion_profile?.student_staff_id ? '#34d399' : 'var(--text-muted)', fontWeight: u.companion_profile?.student_staff_id ? '700' : '400', fontSize: '0.82rem' }}>
-                          {u.companion_profile?.student_staff_id || '—'}
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          {parseInt(u.is_verified) === 1
-                            ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#34d399', background: 'rgba(5,150,105,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>✓ Verified</span>
-                            : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>⏳ Pending</span>
-                          }
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {unverifiedUsers.map(acc => (
+                  <div key={acc.id} className="glass-panel" style={{ padding: '1.25rem 1.5rem', borderLeft: '3px solid #f472b6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: '800', fontSize: '1rem' }}>{acc.name}</span>
+                        <RoleBadge role={acc.role} />
+                        <span style={{ fontSize: '0.73rem', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', padding: '0.15rem 0.55rem', borderRadius: '9999px', fontWeight: '700' }}>PENDING</span>
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                        <span>🪪 {acc.ic_number}</span>
+                        <span style={{ margin: '0 0.5rem' }}>·</span>
+                        <span>{acc.gender === 'L' ? '🔵 Male' : '🩷 Female'}</span>
+                        <span style={{ margin: '0 0.5rem' }}>·</span>
+                        <span>📧 {acc.email}</span>
+                        <span style={{ margin: '0 0.5rem' }}>·</span>
+                        <span>📱 {acc.phone}</span>
+                        {acc.companion_profile?.student_staff_id && (
+                          <><span style={{ margin: '0 0.5rem' }}>·</span><span style={{ color: '#34d399' }}>🎓 {acc.companion_profile.student_staff_id}</span></>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button onClick={() => handleApproveUser(acc.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>✓ Approve</button>
+                      <button onClick={() => handleRejectUser(acc.id)} style={{ fontSize: '0.82rem', padding: '0.5rem 1rem', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>✕ Reject</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        </div>
+        )}
+
+        {/* ── Tab: User Directory ── */}
+        {activeTab === 'users' && (
+          <div className="animate-fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>👥 Registered Users Directory</h2>
+              {/* Role filter pills — counts from actual allUsers array */}
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {[
+                  { key: 'all',       label: 'All',        count: userCounts.all       },
+                  { key: 'companion', label: 'Companions',  count: userCounts.companion },
+                  { key: 'user',      label: 'Family',      count: userCounts.user      },
+                  { key: 'staff',     label: 'Staff',       count: userCounts.staff     },
+                  { key: 'admin',     label: 'Admin',       count: userCounts.admin     },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setRoleFilter(f.key)}
+                    style={{
+                      padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
+                      fontWeight: '700', cursor: 'pointer',
+                      background: roleFilter === f.key ? '#38bdf8' : 'rgba(255,255,255,0.07)',
+                      color: roleFilter === f.key ? '#0f172a' : 'var(--text-muted)',
+                      border: 'none', transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {f.label} <span style={{ opacity: 0.75 }}>({f.count})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
+              ) : filteredUsers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No users found for this filter.</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                        {['Name', 'IC / MyKad', 'Gender', 'Role', 'Contact', 'UniSZA ID', 'Account'].map(h => (
+                          <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map((u, i) => (
+                        <tr key={u.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontWeight: '700' }}>{u.name}</td>
+                          <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{u.ic_number}</td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            {u.gender === 'L'
+                              ? <span style={{ color: '#60a5fa', fontWeight: '700', fontSize: '0.8rem' }}>🔵 Male</span>
+                              : <span style={{ color: '#f472b6', fontWeight: '700', fontSize: '0.8rem' }}>🩷 Female</span>
+                            }
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}><RoleBadge role={u.role} /></td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <div style={{ fontSize: '0.82rem' }}>{u.email}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{u.phone}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', color: u.companion_profile?.student_staff_id ? '#34d399' : 'var(--text-muted)', fontWeight: u.companion_profile?.student_staff_id ? '700' : '400', fontSize: '0.82rem' }}>
+                            {u.companion_profile?.student_staff_id || '—'}
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            {parseInt(u.is_verified) === 1
+                              ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#34d399', background: 'rgba(5,150,105,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>✓ Verified</span>
+                              : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>⏳ Pending</span>
+                            }
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════
@@ -533,18 +558,8 @@ export default function AdminDashboard({ user }) {
             </div>
             <form onSubmit={handleVerifyPassSubmit}>
               <div style={{ display: 'flex', gap: '0.6rem' }}>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. IPENEMAN-20260730-8472"
-                  value={inputPassCode}
-                  onChange={e => setInputPassCode(e.target.value.toUpperCase())}
-                  style={{ fontFamily: 'monospace', letterSpacing: '0.05em' }}
-                  required
-                />
-                <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap', minWidth: '100px' }} disabled={verifying}>
-                  {verifying ? '...' : 'Verify'}
-                </button>
+                <input type="text" className="form-input" placeholder="e.g. IPENEMAN-20260730-8472" value={inputPassCode} onChange={e => setInputPassCode(e.target.value.toUpperCase())} style={{ fontFamily: 'monospace', letterSpacing: '0.05em' }} required />
+                <button type="submit" className="btn btn-primary" style={{ whiteSpace: 'nowrap', minWidth: '100px' }} disabled={verifying}>{verifying ? '...' : 'Verify'}</button>
               </div>
             </form>
             <VerifyPassResult result={verificationResult} />
@@ -576,9 +591,7 @@ export default function AdminDashboard({ user }) {
                     {comp.companion_profile?.student_staff_id && <span> · 🎓 {comp.companion_profile.student_staff_id}</span>}
                   </div>
                 </div>
-                <button onClick={() => handleApproveApplicant(comp.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>
-                  ✓ Assign
-                </button>
+                <button onClick={() => handleApproveApplicant(comp.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>✓ Assign</button>
               </div>
             ))}
           </div>

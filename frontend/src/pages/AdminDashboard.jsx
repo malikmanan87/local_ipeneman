@@ -327,7 +327,7 @@ export default function AdminDashboard({ user }) {
                     <div style={{ background: 'rgba(245, 158, 11, 0.25)', border: '2px solid #f59e0b', borderRadius: '12px', padding: '1.25rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                         <div style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.1rem' }}>
-                          ⚠️ AMARAN: PAS INI TELAH DIIMBAS SEBELUM INI!
+                          ⚠️ ATTENTION: PASS HAS ALREADY BEEN SCANNED BY SYSTEM!
                         </div>
                         <span className="badge" style={{ background: '#f59e0b', color: '#0f172a', fontWeight: '800' }}>
                           DUPLICATE SCAN
@@ -336,10 +336,10 @@ export default function AdminDashboard({ user }) {
 
                       <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.75rem', borderRadius: '8px', marginBottom: '0.75rem', fontSize: '0.825rem' }}>
                         <p style={{ color: '#f59e0b', fontWeight: '700' }}>
-                          🕒 Imbasan Pertama Pada: {verificationResult.previous_scan_info?.scanned_at}
+                          🕒 First Scanned At: {verificationResult.previous_scan_info?.scanned_at}
                         </p>
                         <p style={{ color: '#e2e8f0' }}>
-                          👤 Diimbas Oleh: <strong>{verificationResult.previous_scan_info?.scanned_by_name}</strong>
+                          👤 Scanned By: <strong>{verificationResult.previous_scan_info?.scanned_by_name}</strong>
                         </p>
                       </div>
 

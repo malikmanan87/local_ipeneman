@@ -92,7 +92,7 @@ export default function NurseDashboard({ user }) {
                 <div style={{ background: 'rgba(245, 158, 11, 0.25)', border: '2px solid #f59e0b', borderRadius: '14px', padding: '1.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <div style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.15rem' }}>
-                      ⚠️ AMARAN: PAS INI TELAH DIIMBAS SEBELUM INI!
+                      ⚠️ ATTENTION: PASS HAS ALREADY BEEN SCANNED BY SYSTEM!
                     </div>
                     <span className="badge" style={{ background: '#f59e0b', color: '#0f172a', fontWeight: '800' }}>
                       DUPLICATE SCAN DETECTED
@@ -101,13 +101,13 @@ export default function NurseDashboard({ user }) {
 
                   <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.85rem 1rem', borderRadius: '8px', marginBottom: '1rem', borderLeft: '4px solid #f59e0b', fontSize: '0.875rem' }}>
                     <p style={{ color: '#f59e0b', fontWeight: '700', marginBottom: '0.3rem' }}>
-                      🕒 Imbasan Pertama Pada: {verificationResult.previous_scan_info?.scanned_at}
+                      🕒 First Scanned At: {verificationResult.previous_scan_info?.scanned_at}
                     </p>
                     <p style={{ color: '#e2e8f0', marginBottom: '0.2rem' }}>
-                      👤 Diimbas Oleh Staf: <strong>{verificationResult.previous_scan_info?.scanned_by_name}</strong>
+                      👤 Scanned By Staff: <strong>{verificationResult.previous_scan_info?.scanned_by_name}</strong>
                     </p>
                     <p style={{ color: '#cbd5e1', fontSize: '0.8rem', fontStyle: 'italic', marginTop: '0.35rem' }}>
-                      Makluman: Peneman ini telah membuat pengesahan masuk wad sebelum ini. Sila pastikan tiada penipuan identiti atau pas berganda.
+                      Notice: This companion pass was previously verified upon ward entry. Please confirm companion identity before granting entry.
                     </p>
                   </div>
 

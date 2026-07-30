@@ -177,8 +177,8 @@ class AdminController extends ResourceController
             'duty_log'           => $dutyLog,
             'verified_at'        => date('d/m/Y H:i:s'),
             'message'            => $alreadyScanned
-                ? '⚠️ AMARAN: PAS INI TELAH DIIMBAS SEBELUM INI!'
-                : '✅ PAS SAH & DILULUSKAN: Kehadiran Peneman disahkan ke Wad HoSZA.'
+                ? '⚠️ ATTENTION: PASS HAS ALREADY BEEN SCANNED BY SYSTEM!'
+                : '✅ VALID PASS & APPROVED: Companion entry verified for HoSZA Ward.'
         ]);
     }
 }

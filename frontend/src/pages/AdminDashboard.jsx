@@ -89,6 +89,7 @@ export default function AdminDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('requests');
   const [roleFilter, setRoleFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('open');
+  const [financeFilter, setFinanceFilter] = useState('all');
   const [requests, setRequests] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [unverifiedUsers, setUnverifiedUsers] = useState([]);
@@ -472,8 +473,6 @@ export default function AdminDashboard({ user }) {
 
         {/* ── Tab: Financial Ledger & Payout Oversight ── */}
         {activeTab === 'finance' && (() => {
-          const [financeFilter, setFinanceFilter] = useState('all');
-
           const filteredFinanceRequests = requests.filter(r => {
             if (financeFilter === 'completed') return r.status === 'completed';
             if (financeFilter === 'pending') return r.status === 'in_progress' || r.status === 'assigned';

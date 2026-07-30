@@ -5,7 +5,15 @@ export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState({ total_companions: 0, total_requests: 0, active_duties: 0, on_behalf_count: 0 });
   const [requests, setRequests] = useState([]);
   const [showOnBehalfModal, setShowOnBehalfModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // System Payment Settings
+  const [rateSettings, setRateSettings] = useState({
+    default_hourly_rate: '10.00',
+    min_hourly_rate: '8.00',
+    max_hourly_rate: '30.00'
+  });
 
   // Form state for On-Behalf Request (Admin creating for patient without family/waris)
   const [formData, setFormData] = useState({
@@ -33,6 +41,11 @@ export default function AdminDashboard({ user }) {
 
       const reqRes = await adminAPI.getAllRequests();
       setRequests(reqRes.data || []);
+
+      const settingsRes = await adminAPI.getSettings();
+      if (settingsRes.data.settings) {
+        setRateSettings(settingsRes.data.settings);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -56,6 +69,18 @@ export default function AdminDashboard({ user }) {
     }
   };
 
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await adminAPI.updateSettings(rateSettings);
+      alert('✓ Payment rate settings updated successfully!');
+      if (res.data.settings) setRateSettings(res.data.settings);
+      setShowSettingsModal(false);
+    } catch (err) {
+      alert('Failed to update payment rate settings.');
+    }
+  };
+
   return (
     <div className="container" style={{ padding: '2rem 1.5rem' }}>
       {/* Admin Header */}
@@ -66,8 +91,27 @@ export default function AdminDashboard({ user }) {
             Ward Patient Companion Oversight & Unaccompanied Patient On-Behalf Request Module
           </p>
         </div>
-        <button onClick={() => setShowOnBehalfModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
-          🏥 + Request On-Behalf (No Family)
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button onClick={() => setShowSettingsModal(true)} className="btn btn-secondary" style={{ border: '1px solid #34d399', color: '#34d399' }}>
+            ⚙️ Payment Rate Settings
+          </button>
+          <button onClick={() => setShowOnBehalfModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+            🏥 + Request On-Behalf (No Family)
+          </button>
+        </div>
+      </div>
+
+      {/* Payment Rates Quick Banner */}
+      <div className="glass-panel" style={{ padding: '1rem 1.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #34d399' }}>
+        <div>
+          <strong style={{ color: '#34d399', fontSize: '0.95rem' }}>💰 Current Active Payment Rate Settings:</strong>
+          <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.75rem' }}>
+            Standard Rate: <strong>RM {parseFloat(rateSettings.default_hourly_rate || 10).toFixed(2)}/hr</strong> | 
+            Allowed Range: <strong>RM {parseFloat(rateSettings.min_hourly_rate || 8).toFixed(2)}/hr</strong> – <strong>RM {parseFloat(rateSettings.max_hourly_rate || 30).toFixed(2)}/hr</strong>
+          </span>
+        </div>
+        <button onClick={() => setShowSettingsModal(true)} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}>
+          Configure Rates
         </button>
       </div>
 
@@ -153,6 +197,66 @@ export default function AdminDashboard({ user }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal Settings Payment Rates */}
+      {showSettingsModal && (
+        <div className="modal-overlay">
+          <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '480px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>⚙️ Payment Rate Configuration</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Configure hospital system companion hourly allowance rates</p>
+              </div>
+              <button onClick={() => setShowSettingsModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+            </div>
+
+            <form onSubmit={handleSaveSettings}>
+              <div className="form-group">
+                <label>Standard Hourly Rate (RM / hour)</label>
+                <input
+                  type="number"
+                  step="0.50"
+                  className="form-input"
+                  value={rateSettings.default_hourly_rate}
+                  onChange={(e) => setRateSettings({ ...rateSettings, default_hourly_rate: e.target.value })}
+                  required
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Recommended standard rate used for auto-calculating shift allowance</span>
+              </div>
+
+              <div className="grid grid-2" style={{ gap: '1rem' }}>
+                <div className="form-group">
+                  <label>Minimum Hourly Rate (RM)</label>
+                  <input
+                    type="number"
+                    step="0.50"
+                    className="form-input"
+                    value={rateSettings.min_hourly_rate}
+                    onChange={(e) => setRateSettings({ ...rateSettings, min_hourly_rate: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Maximum Hourly Rate (RM)</label>
+                  <input
+                    type="number"
+                    step="0.50"
+                    className="form-input"
+                    value={rateSettings.max_hourly_rate}
+                    onChange={(e) => setRateSettings({ ...rateSettings, max_hourly_rate: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', background: 'linear-gradient(135deg, #059669, #0284c7)' }}>
+                Save Payment Rate Settings
+              </button>
+            </form>
+          </div>
         </div>
       )}
 

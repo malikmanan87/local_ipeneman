@@ -36,6 +36,8 @@ export const companionAPI = {
 export const adminAPI = {
   getStats: () => api.get('/admin/stats'),
   getAllRequests: () => api.get('/admin/requests'),
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (data) => api.post('/admin/settings/update', data),
 };
 
 export default api;

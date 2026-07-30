@@ -6,6 +6,7 @@ use CodeIgniter\RESTful\ResourceController;
 use App\Models\RequestModel;
 use App\Models\UserModel;
 use App\Models\DutyLogModel;
+use App\Models\SettingModel;
 
 class AdminController extends ResourceController
 {
@@ -45,5 +46,47 @@ class AdminController extends ResourceController
         $requests     = $requestModel->orderBy('id', 'DESC')->findAll();
 
         return $this->respond($requests);
+    }
+
+    /**
+     * Get system payment rate settings
+     */
+    public function getSettings()
+    {
+        $settingModel = new SettingModel();
+        $settings     = $settingModel->getAllSettings();
+
+        return $this->respond([
+            'status'   => 200,
+            'settings' => $settings
+        ]);
+    }
+
+    /**
+     * Update payment rate settings
+     */
+    public function updateSettings()
+    {
+        $settingModel = new SettingModel();
+
+        $defaultRate = $this->request->getVar('default_hourly_rate');
+        $minRate     = $this->request->getVar('min_hourly_rate');
+        $maxRate     = $this->request->getVar('max_hourly_rate');
+
+        if ($defaultRate !== null) {
+            $settingModel->setVal('default_hourly_rate', (string) floatval($defaultRate), 'Standard hourly allowance rate (RM/hour)');
+        }
+        if ($minRate !== null) {
+            $settingModel->setVal('min_hourly_rate', (string) floatval($minRate), 'Minimum allowed hourly rate (RM/hour)');
+        }
+        if ($maxRate !== null) {
+            $settingModel->setVal('max_hourly_rate', (string) floatval($maxRate), 'Maximum allowed hourly rate (RM/hour)');
+        }
+
+        return $this->respond([
+            'status'   => 200,
+            'message'  => 'Payment rate settings updated successfully.',
+            'settings' => $settingModel->getAllSettings()
+        ]);
     }
 }

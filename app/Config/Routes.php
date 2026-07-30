@@ -33,5 +33,7 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($
     // Admin HoSZA Routes
     $routes->get('admin/stats', 'AdminController::stats');
     $routes->get('admin/requests', 'AdminController::allRequests');
+    $routes->get('admin/settings', 'AdminController::getSettings');
+    $routes->post('admin/settings/update', 'AdminController::updateSettings');
 });
 

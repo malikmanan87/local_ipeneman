@@ -20,7 +20,7 @@ export const authAPI = {
 export const requestAPI = {
   create: (data) => api.post('/requests/create', data),
   update: (id, data) => api.post(`/requests/update/${id}`, data),
-  getAvailable: (gender) => api.get(`/requests/available?gender=${gender}`),
+  getAvailable: (gender, companionId) => api.get(`/requests/available?gender=${gender}${companionId ? `&companion_id=${companionId}` : ''}`),
   getMyRequests: (userId) => api.get(`/requests/my/${userId}`),
   acceptCompanion: (data) => api.post('/requests/accept-companion', data),
 };

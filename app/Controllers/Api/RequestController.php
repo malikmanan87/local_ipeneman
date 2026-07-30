@@ -157,18 +157,31 @@ class RequestController extends ResourceController
      */
     public function availableJobs()
     {
-        $gender = $this->request->getGet('gender');
+        $gender      = $this->request->getGet('gender');
+        $companionId = $this->request->getGet('companion_id');
 
         if (!$gender || !in_array($gender, ['L', 'P'])) {
             return $this->failValidationError('Companion gender is required for safety matching.');
         }
 
         $requestModel = new RequestModel();
+        $appModel     = new ApplicationModel();
+
         // Strictly filter: Only show patient requests with the EXACT SAME GENDER
         $jobs = $requestModel->where('patient_gender', $gender)
                             ->where('status', 'open')
                             ->orderBy('shift_date', 'ASC')
                             ->findAll();
+
+        if ($companionId) {
+            foreach ($jobs as &$job) {
+                $app = $appModel->where('request_id', $job['id'])
+                                ->where('companion_id', $companionId)
+                                ->first();
+                $job['has_applied'] = $app ? true : false;
+                $job['application_status'] = $app ? $app['status'] : null;
+            }
+        }
 
         return $this->respond([
             'status' => 200,

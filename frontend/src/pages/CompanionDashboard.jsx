@@ -12,8 +12,8 @@ export default function CompanionDashboard({ user }) {
   const fetchCompanionData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch available jobs strictly matching companion's gender
-      const jobsRes = await requestAPI.getAvailable(user.gender);
+      // 1. Fetch available jobs strictly matching companion's gender and check application status
+      const jobsRes = await requestAPI.getAvailable(user.gender, user.id);
       setAvailableJobs(jobsRes.data.data || []);
 
       // 2. Fetch assigned duties
@@ -223,9 +223,15 @@ export default function CompanionDashboard({ user }) {
                   <p>📌 <strong>Tasks:</strong> {job.task_details}</p>
                 </div>
 
-                <button onClick={() => handleApply(job.id)} className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                  Apply as Companion
-                </button>
+                {job.has_applied ? (
+                  <button disabled className="btn btn-secondary" style={{ width: '100%', marginTop: '0.5rem', opacity: 0.75, cursor: 'not-allowed', background: 'rgba(51, 65, 85, 0.6)', border: '1px solid #64748b', color: '#cbd5e1', fontWeight: '700' }}>
+                    ✓ Applied (Pending Approval)
+                  </button>
+                ) : (
+                  <button onClick={() => handleApply(job.id)} className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
+                    Apply as Companion
+                  </button>
+                )}
               </div>
             ))}
           </div>

@@ -58,7 +58,7 @@ export default function App() {
         color: 'var(--text-muted)',
         fontSize: '0.85rem'
       }}>
-        © 2026 iPeneman - Hospital Sultan Zainal Abidin (HoSZA). Hak Cipta Terpelihara.
+        © 2026 iPeneman - Hospital Sultan Zainal Abidin (HoSZA). All Rights Reserved.
       </footer>
     </div>
   );

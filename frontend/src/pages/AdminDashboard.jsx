@@ -450,38 +450,46 @@ export default function AdminDashboard({ user }) {
 
           return (
             <div className="animate-fade-in">
-              {/* Financial KPI Summary Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #34d399' }}>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Disbursed Payout (Completed)</div>
-                  <div style={{ fontSize: '1.65rem', fontWeight: '800', color: '#34d399', marginTop: '0.2rem' }}>
-                    RM {parseFloat(stats.total_completed_payout || 0).toFixed(2)}
+              {/* Unified Financial Summary Panel with Separators */}
+              <div className="glass-panel" style={{ padding: '1.25rem 1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid #34d399' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'center' }}>
+                  
+                  {/* Item 1: Disbursed Payout */}
+                  <div style={{ paddingRight: '0.75rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Disbursed Payout (Completed)</div>
+                    <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#34d399', marginTop: '0.2rem' }}>
+                      RM {parseFloat(stats.total_completed_payout || 0).toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Full duty completed & verified</div>
                   </div>
-                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '0.25rem' }}>Full duty completed & verified</div>
-                </div>
 
-                <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #fbbf24' }}>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Pending Shift Payout</div>
-                  <div style={{ fontSize: '1.65rem', fontWeight: '800', color: '#fbbf24', marginTop: '0.2rem' }}>
-                    RM {parseFloat(stats.total_pending_payout || 0).toFixed(2)}
+                  {/* Item 2: Pending Shift Payout */}
+                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.1rem', paddingRight: '0.75rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pending Shift Payout</div>
+                    <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#fbbf24', marginTop: '0.2rem' }}>
+                      RM {parseFloat(stats.total_pending_payout || 0).toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Reserved for active/open shifts</div>
                   </div>
-                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '0.25rem' }}>Reserved for active/open shifts</div>
-                </div>
 
-                <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #38bdf8' }}>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Grand Total Finance Value</div>
-                  <div style={{ fontSize: '1.65rem', fontWeight: '800', color: '#38bdf8', marginTop: '0.2rem' }}>
-                    RM {parseFloat(stats.grand_total_finance || 0).toFixed(2)}
+                  {/* Item 3: Grand Total Finance Value */}
+                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.1rem', paddingRight: '0.75rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Grand Total Finance Value</div>
+                    <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#38bdf8', marginTop: '0.2rem' }}>
+                      RM {parseFloat(stats.grand_total_finance || 0).toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>All-time total shift value</div>
                   </div>
-                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '0.25rem' }}>All-time total shift value</div>
-                </div>
 
-                <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #a78bfa' }}>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Total Tips / Bonus Collected</div>
-                  <div style={{ fontSize: '1.65rem', fontWeight: '800', color: '#a78bfa', marginTop: '0.2rem' }}>
-                    RM {parseFloat(stats.total_tips || 0).toFixed(2)}
+                  {/* Item 4: Total Tips / Bonus Collected */}
+                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.1rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Tips / Bonus Collected</div>
+                    <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#a78bfa', marginTop: '0.2rem' }}>
+                      RM {parseFloat(stats.total_tips || 0).toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Optional tips from patient family</div>
                   </div>
-                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '0.25rem' }}>Optional tips from patient family</div>
+
                 </div>
               </div>
 

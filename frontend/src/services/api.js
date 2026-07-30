@@ -33,6 +33,7 @@ export const companionAPI = {
   checkIn: (data) => api.post('/companion/check-in', data),
   checkOut: (data) => api.post('/companion/check-out', data),
   addCareNote: (data) => api.post('/companion/add-note', data),
+  getRatings: (companionId) => api.get(`/companion/ratings/${companionId}`),
 };
 
 export const adminAPI = {

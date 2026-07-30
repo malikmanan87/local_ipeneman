@@ -197,4 +197,39 @@ class CompanionController extends ResourceController
             'notes'   => $existingNotes
         ]);
     }
+
+    /**
+     * Get ratings and reviews received by a companion
+     */
+    public function getRatings($companionId = null)
+    {
+        $ratingModel  = new \App\Models\RatingModel();
+        $requestModel = new RequestModel();
+        $userModel    = new UserModel();
+        $compModel    = new \App\Models\CompanionProfileModel();
+
+        $ratings = $ratingModel->where('companion_id', $companionId)
+                               ->orderBy('id', 'DESC')
+                               ->findAll();
+
+        foreach ($ratings as &$r) {
+            $req = $requestModel->find($r['request_id']);
+            $r['request_code'] = $req ? $req['request_code'] : 'N/A';
+            $r['patient_name'] = $req ? $req['patient_name'] : 'N/A';
+            $r['ward_name']    = $req ? $req['ward_name'] : 'N/A';
+
+            $user = $userModel->find($r['rated_by_user_id']);
+            $r['rater_name'] = $user ? $user['name'] : 'Patient Family';
+        }
+
+        $profile = $compModel->where('user_id', $companionId)->first();
+        $avgRating = $profile ? floatval($profile['rating_avg']) : 5.00;
+
+        return $this->respond([
+            'status'        => 200,
+            'rating_avg'    => $avgRating,
+            'total_reviews' => count($ratings),
+            'data'          => $ratings
+        ]);
+    }
 }

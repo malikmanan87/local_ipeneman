@@ -5,6 +5,7 @@ import EPassModal from '../components/EPassModal';
 export default function CompanionDashboard({ user }) {
   const [availableJobs, setAvailableJobs] = useState([]);
   const [myDuties, setMyDuties] = useState([]);
+  const [ratingsData, setRatingsData] = useState({ rating_avg: 5.0, total_reviews: 0, data: [] });
   const [loading, setLoading] = useState(true);
   const [activeDutyForPass, setActiveDutyForPass] = useState(null);
   const [careNoteText, setCareNoteText] = useState({});
@@ -19,6 +20,12 @@ export default function CompanionDashboard({ user }) {
       // 2. Fetch assigned duties
       const dutiesRes = await companionAPI.getMyDuties(user.id);
       setMyDuties(dutiesRes.data || []);
+
+      // 3. Fetch companion ratings & reviews
+      const ratingsRes = await companionAPI.getRatings(user.id);
+      if (ratingsRes.data) {
+        setRatingsData(ratingsRes.data);
+      }
     } catch (err) {
       console.error('Error fetching companion data:', err);
     } finally {
@@ -96,9 +103,15 @@ export default function CompanionDashboard({ user }) {
               Safety Filter Active: Displaying duties for <strong style={{ color: user.gender === 'L' ? '#60a5fa' : '#f472b6' }}>{user.gender === 'L' ? 'MALE' : 'FEMALE'} PATIENTS ONLY</strong>.
             </p>
           </div>
-          <span className={`badge ${user.gender === 'L' ? 'badge-male' : 'badge-female'}`} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-            {user.gender === 'L' ? '♂ MALE COMPANION' : '♀ FEMALE COMPANION'}
-          </span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.9rem', color: '#f59e0b', fontWeight: '700' }}>
+              ⭐ Score: {parseFloat(ratingsData.rating_avg || 5.0).toFixed(2)} / 5.0 ({ratingsData.total_reviews} reviews)
+            </div>
+            <span className={`badge ${user.gender === 'L' ? 'badge-male' : 'badge-female'}`} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+              {user.gender === 'L' ? '♂ MALE COMPANION' : '♀ FEMALE COMPANION'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -179,7 +192,41 @@ export default function CompanionDashboard({ user }) {
         )}
       </div>
 
-      {/* Section 2: Open Job Feed (Filtered by Gender) */}
+      {/* Section 2: Ratings & Reviews Received */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          ⭐ Feedback & Ratings Received from Families
+        </h3>
+
+        {ratingsData.data.length === 0 ? (
+          <div className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No rating reviews submitted yet. Complete duties to receive feedback from patient families.
+          </div>
+        ) : (
+          <div className="grid grid-2">
+            {ratingsData.data.map((rev) => (
+              <div key={rev.id} className="glass-panel" style={{ padding: '1.25rem', borderLeft: '4px solid #f59e0b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ color: '#f59e0b', fontSize: '1rem', fontWeight: '700' }}>
+                    {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)} ({rev.rating}/5)
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {rev.request_code}
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.875rem', fontStyle: 'italic', marginBottom: '0.5rem', color: '#e2e8f0' }}>
+                  "{rev.review || 'Great companion service provided.'}"
+                </p>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Submitted by: <strong>{rev.rater_name}</strong> ({rev.ward_name})
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Section 3: Open Job Feed (Filtered by Gender) */}
       <div>
         <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           🔍 Available Companion Opportunities (HoSZA Wards)
@@ -240,7 +287,11 @@ export default function CompanionDashboard({ user }) {
 
       {/* E-Pass Modal */}
       {activeDutyForPass && (
-        <EPassModal duty={activeDutyForPass} onClose={() => setActiveDutyForPass(null)} />
+        <EPassModal
+          duty={activeDutyForPass}
+          companion={user}
+          onClose={() => setActiveDutyForPass(null)}
+        />
       )}
     </div>
   );

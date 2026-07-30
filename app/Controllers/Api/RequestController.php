@@ -12,7 +12,7 @@ class RequestController extends ResourceController
     protected $format = 'json';
 
     /**
-     * Create a new request (Waris or Admin On-Behalf)
+     * Create a new request (Family or Admin On-Behalf)
      */
     public function create()
     {
@@ -59,7 +59,7 @@ class RequestController extends ResourceController
 
         return $this->respondCreated([
             'status'  => 201,
-            'message' => 'Permohonan peneman di Wad HoSZA berjaya dicipta.',
+            'message' => 'Patient companion request created successfully.',
             'id'      => $id,
             'code'    => $requestCode
         ]);
@@ -74,7 +74,7 @@ class RequestController extends ResourceController
         $gender = $this->request->getGet('gender');
 
         if (!$gender || !in_array($gender, ['L', 'P'])) {
-            return $this->failValidationError('Jantina peneman diperlukan untuk penapisan keselamatan.');
+            return $this->failValidationError('Companion gender is required for safety matching.');
         }
 
         $requestModel = new RequestModel();
@@ -86,7 +86,7 @@ class RequestController extends ResourceController
 
         return $this->respond([
             'status' => 200,
-            'gender_filter' => $gender === 'L' ? 'Peneman Lelaki sahaja' : 'Peneman Perempuan sahaja',
+            'gender_filter' => $gender === 'L' ? 'Male Companion only' : 'Female Companion only',
             'total'  => count($jobs),
             'data'   => $jobs
         ]);
@@ -136,7 +136,7 @@ class RequestController extends ResourceController
 
         return $this->respond([
             'status'  => 200,
-            'message' => 'Peneman berjaya dilantik untuk tugasan wad ini.'
+            'message' => 'Companion successfully assigned for this ward request.'
         ]);
     }
 }

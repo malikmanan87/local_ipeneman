@@ -7,7 +7,7 @@ export default function EPassModal({ duty, onClose }) {
     <div className="modal-overlay">
       <div className="glass-panel modal-content animate-fade-in" style={{ textAlign: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>PAS DIGITAL MASUK WAD HOSZA</h3>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>DIGITAL WARD ENTRY PASS</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
         </div>
 
@@ -19,7 +19,7 @@ export default function EPassModal({ duty, onClose }) {
           marginBottom: '1.5rem'
         }}>
           <div style={{ fontSize: '0.8rem', color: '#34d399', fontWeight: '800', letterSpacing: '0.1em' }}>
-            PAS KEBENARAN BERTUGAS SAH
+            VALID DUTY AUTHORIZATION PASS
           </div>
 
           <div style={{ margin: '1.25rem 0', display: 'inline-block', background: 'white', padding: '1rem', borderRadius: '12px' }}>
@@ -30,23 +30,23 @@ export default function EPassModal({ duty, onClose }) {
           </div>
 
           <div style={{ fontSize: '0.9rem', fontWeight: '700', color: 'white' }}>
-            KOD PAS: <span style={{ color: '#f59e0b' }}>{duty.request_code}</span>
+            PASS CODE: <span style={{ color: '#f59e0b' }}>{duty.request_code}</span>
           </div>
           <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>
-            Tunjukkan pas ini kepada Pengawal Keselamatan / Jururawat Wad
+            Present this pass to Security Officers / Ward Nurses
           </div>
         </div>
 
         <div style={{ textAlign: 'left', background: 'rgba(15, 23, 42, 0.6)', padding: '1rem', borderRadius: '10px', fontSize: '0.875rem' }}>
           <p style={{ marginBottom: '0.4rem' }}><strong>Hospital:</strong> Hospital Sultan Zainal Abidin (HoSZA)</p>
-          <p style={{ marginBottom: '0.4rem' }}><strong>Lokasi Wad:</strong> {duty.ward_name} (Katil {duty.bed_number})</p>
-          <p style={{ marginBottom: '0.4rem' }}><strong>Nama Pesakit:</strong> {duty.patient_name}</p>
-          <p style={{ marginBottom: '0.4rem' }}><strong>Jantina Pesakit:</strong> {duty.patient_gender === 'L' ? 'Lelaki' : 'Perempuan'}</p>
-          <p><strong>Waktu Syif:</strong> {duty.shift_date} ({duty.start_time} - {duty.end_time})</p>
+          <p style={{ marginBottom: '0.4rem' }}><strong>Ward Location:</strong> {duty.ward_name} (Bed {duty.bed_number})</p>
+          <p style={{ marginBottom: '0.4rem' }}><strong>Patient Name:</strong> {duty.patient_name}</p>
+          <p style={{ marginBottom: '0.4rem' }}><strong>Patient Gender:</strong> {duty.patient_gender === 'L' ? 'Male' : 'Female'}</p>
+          <p><strong>Shift Time:</strong> {duty.shift_date} ({duty.start_time} - {duty.end_time})</p>
         </div>
 
         <button onClick={onClose} className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }}>
-          Tutup Pas
+          Close Pass
         </button>
       </div>
     </div>

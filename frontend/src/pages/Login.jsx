@@ -18,7 +18,7 @@ export default function Login({ onLoginSuccess, switchToRegister }) {
         onLoginSuccess(res.data.user);
       }
     } catch (err) {
-      setError(err.response?.data?.messages?.error || err.response?.data?.message || 'Gagal log masuk. Semak emel dan kata laluan.');
+      setError(err.response?.data?.messages?.error || err.response?.data?.message || 'Login failed. Please check your email and password.');
     } finally {
       setLoading(false);
     }
@@ -28,10 +28,10 @@ export default function Login({ onLoginSuccess, switchToRegister }) {
     <div style={{ maxWidth: '420px', margin: '3rem auto' }}>
       <div className="glass-panel animate-fade-in" style={{ padding: '2rem' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.5rem', textAlign: 'center' }}>
-          Log Masuk iPeneman
+          iPeneman Login
         </h2>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '1.5rem' }}>
-          Sistem Peneman Pesakit Hospital Sultan Zainal Abidin
+          Hospital Patient Companion System — Hospital Sultan Zainal Abidin
         </p>
 
         {error && (
@@ -42,11 +42,11 @@ export default function Login({ onLoginSuccess, switchToRegister }) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Alamat Emel</label>
+            <label>Email Address</label>
             <input
               type="email"
               className="form-input"
-              placeholder="contoh: user@gmail.com"
+              placeholder="e.g. user@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -54,7 +54,7 @@ export default function Login({ onLoginSuccess, switchToRegister }) {
           </div>
 
           <div className="form-group">
-            <label>Kata Laluan</label>
+            <label>Password</label>
             <input
               type="password"
               className="form-input"
@@ -66,14 +66,14 @@ export default function Login({ onLoginSuccess, switchToRegister }) {
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} disabled={loading}>
-            {loading ? 'Sila tunggu...' : 'Log Masuk'}
+            {loading ? 'Please wait...' : 'Log In'}
           </button>
         </form>
 
         <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Belum ada akaun?{' '}
+          Don't have an account?{' '}
           <span onClick={switchToRegister} style={{ color: '#34d399', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}>
-            Daftar Sekarang
+            Register Now
           </span>
         </div>
       </div>

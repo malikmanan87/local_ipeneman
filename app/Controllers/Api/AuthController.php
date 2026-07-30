@@ -60,7 +60,7 @@ class AuthController extends ResourceController
 
         return $this->respondCreated([
             'status'  => 201,
-            'message' => 'Pendaftaran berjaya. Jantina dikesan secara automatik: ' . ($derivedGender === 'L' ? 'Lelaki' : 'Perempuan'),
+            'message' => 'Registration successful. Gender automatically detected: ' . ($derivedGender === 'L' ? 'Male' : 'Female'),
             'user'    => $user
         ]);
     }
@@ -74,14 +74,14 @@ class AuthController extends ResourceController
         $user      = $userModel->where('email', $email)->first();
 
         if (!$user || !password_verify($password, $user['password'])) {
-            return $this->failUnauthorized('Emel atau kata laluan tidak sah.');
+            return $this->failUnauthorized('Invalid email or password.');
         }
 
         unset($user['password']);
 
         return $this->respond([
             'status'  => 200,
-            'message' => 'Log masuk berjaya.',
+            'message' => 'Login successful.',
             'user'    => $user,
             'token'   => base64_encode(json_encode(['id' => $user['id'], 'email' => $user['email'], 'role' => $user['role'], 'gender' => $user['gender']]))
         ]);
@@ -93,7 +93,7 @@ class AuthController extends ResourceController
         $user      = $userModel->find($id);
 
         if (!$user) {
-            return $this->failNotFound('Pengguna tidak dijumpai.');
+            return $this->failNotFound('User not found.');
         }
 
         unset($user['password']);

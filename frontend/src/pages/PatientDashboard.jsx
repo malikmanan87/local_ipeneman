@@ -13,12 +13,12 @@ export default function PatientDashboard({ user }) {
     patient_rn: '',
     patient_gender: user.gender || 'L',
     patient_age: 65,
-    ward_name: 'Wad 3A (Lelaki)',
-    bed_number: 'Katil 08',
+    ward_name: 'Ward 3A (Male)',
+    bed_number: 'Bed 08',
     shift_date: new Date().toISOString().split('T')[0],
     start_time: '14:00',
     end_time: '20:00',
-    task_details: 'Bantu teman pesakit berbual, pimpin ke tandas & ambil makanan.',
+    task_details: 'Assist patient with conversation, guide to restroom & assist with meals.',
     allowance_amount: 60.00
   });
 
@@ -42,11 +42,11 @@ export default function PatientDashboard({ user }) {
     e.preventDefault();
     try {
       await requestAPI.create(formData);
-      alert('✓ Permohonan Peneman Pesakit di Wad HoSZA berjaya dicipta!');
+      alert('✓ Patient companion request created successfully!');
       setShowModal(false);
       fetchMyRequests();
     } catch (err) {
-      alert('Gagal mencipta permohonan.');
+      alert('Failed to create request.');
     }
   };
 
@@ -54,26 +54,26 @@ export default function PatientDashboard({ user }) {
     <div className="container" style={{ padding: '2rem 1.5rem' }}>
       <div className="glass-panel" style={{ padding: '1.75rem', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Papan Pengurusan Waris Pesakit</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Patient & Family Dashboard</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Permohonan khidmat peneman untuk pesakit di Wad Hospital Sultan Zainal Abidin (HoSZA)
+            Request patient companion services for Hospital Sultan Zainal Abidin (HoSZA) wards
           </p>
         </div>
         <button onClick={() => setShowModal(true)} className="btn btn-primary">
-          + Mohon Peneman Pesakit Baru
+          + Request New Companion
         </button>
       </div>
 
       {/* List of Requests */}
       <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem' }}>
-        Senarai Permohonan Saya
+        My Requests
       </h3>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Memuatkan permohonan...</div>
+        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading requests...</div>
       ) : myRequests.length === 0 ? (
         <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          Anda belum mempunyai sebarang permohonan peneman pesakit. Klik butang "+ Mohon Peneman Pesakit Baru" di atas.
+          You have no companion requests yet. Click "+ Request New Companion" above to create one.
         </div>
       ) : (
         <div className="grid grid-2">
@@ -85,34 +85,34 @@ export default function PatientDashboard({ user }) {
               </div>
 
               <h4 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.4rem' }}>
-                {req.patient_name} ({req.patient_gender === 'L' ? 'Lelaki' : 'Perempuan'})
+                {req.patient_name} ({req.patient_gender === 'L' ? 'Male' : 'Female'})
               </h4>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-                <strong>Wad:</strong> {req.ward_name} ({req.bed_number})
+                <strong>Ward:</strong> {req.ward_name} ({req.bed_number})
               </p>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-                <strong>Tarikh/Masa:</strong> {req.shift_date} ({req.start_time} - {req.end_time})
+                <strong>Date/Time:</strong> {req.shift_date} ({req.start_time} - {req.end_time})
               </p>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                <strong>Elaun:</strong> RM {parseFloat(req.allowance_amount).toFixed(2)}
+                <strong>Allowance:</strong> RM {parseFloat(req.allowance_amount).toFixed(2)}
               </p>
             </div>
           ))}
         </div>
       )}
 
-      {/* Modal Cipta Permohonan */}
+      {/* Create Request Modal */}
       {showModal && (
         <div className="modal-overlay">
           <div className="glass-panel modal-content animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>Borang Permohonan Peneman Pesakit</h3>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>Companion Request Form</h3>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
             </div>
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Nama Pesakit</label>
+                <label>Patient Name</label>
                 <input
                   type="text"
                   className="form-input"
@@ -123,34 +123,34 @@ export default function PatientDashboard({ user }) {
               </div>
 
               <div className="form-group">
-                <label>Jantina Pesakit (Diperlukan untuk tapisan keselamatan peneman jantina sama)</label>
+                <label>Patient Gender (Required for strict same-gender companion safety rule)</label>
                 <select
                   className="form-select"
                   value={formData.patient_gender}
                   onChange={(e) => setFormData({ ...formData, patient_gender: e.target.value })}
                 >
-                  <option value="L">Lelaki (Hanya Peneman Lelaki Boleh Mohon)</option>
-                  <option value="P">Perempuan (Hanya Peneman Perempuan Boleh Mohon)</option>
+                  <option value="L">Male (Only Male Companions can apply)</option>
+                  <option value="P">Female (Only Female Companions can apply)</option>
                 </select>
               </div>
 
               <div className="grid grid-2" style={{ gap: '1rem' }}>
                 <div className="form-group">
-                  <label>Wad HoSZA</label>
+                  <label>HoSZA Ward</label>
                   <select
                     className="form-select"
                     value={formData.ward_name}
                     onChange={(e) => setFormData({ ...formData, ward_name: e.target.value })}
                   >
-                    <option value="Wad 3A (Lelaki)">Wad 3A (Wad Lelaki)</option>
-                    <option value="Wad 4B (Perempuan)">Wad 4B (Wad Perempuan)</option>
-                    <option value="Wad Daycare / HDW">Wad Daycare / HDW</option>
-                    <option value="Wad Pediatrik">Wad Pediatrik</option>
+                    <option value="Ward 3A (Male)">Ward 3A (Male Ward)</option>
+                    <option value="Ward 4B (Female)">Ward 4B (Female Ward)</option>
+                    <option value="Daycare / HDW Ward">Daycare / HDW Ward</option>
+                    <option value="Pediatric Ward">Pediatric Ward</option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label>No. Katil Wad</label>
+                  <label>Ward Bed Number</label>
                   <input
                     type="text"
                     className="form-input"
@@ -163,7 +163,7 @@ export default function PatientDashboard({ user }) {
 
               <div className="grid grid-3" style={{ gap: '1rem' }}>
                 <div className="form-group">
-                  <label>Tarikh Syif</label>
+                  <label>Shift Date</label>
                   <input
                     type="date"
                     className="form-input"
@@ -173,7 +173,7 @@ export default function PatientDashboard({ user }) {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Masa Mula</label>
+                  <label>Start Time</label>
                   <input
                     type="time"
                     className="form-input"
@@ -183,7 +183,7 @@ export default function PatientDashboard({ user }) {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Masa Tamat</label>
+                  <label>End Time</label>
                   <input
                     type="time"
                     className="form-input"
@@ -195,7 +195,7 @@ export default function PatientDashboard({ user }) {
               </div>
 
               <div className="form-group">
-                <label>Kadar Elaun Peneman (RM)</label>
+                <label>Companion Allowance (RM)</label>
                 <input
                   type="number"
                   step="5"
@@ -207,7 +207,7 @@ export default function PatientDashboard({ user }) {
               </div>
 
               <div className="form-group">
-                <label>Tugas & Keperluan Khas Pesakit</label>
+                <label>Tasks & Special Requirements</label>
                 <textarea
                   rows="3"
                   className="form-textarea"
@@ -218,7 +218,7 @@ export default function PatientDashboard({ user }) {
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }}>
-                Hantar Permohonan
+                Submit Request
               </button>
             </form>
           </div>

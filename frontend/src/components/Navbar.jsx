@@ -34,21 +34,21 @@ export default function Navbar({ user, onLogout, activeTab, setActiveTab }) {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{user.name}</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Peranan: <span style={{ textTransform: 'capitalize', color: '#34d399', fontWeight: '700' }}>{user.role}</span> | Jantina: <span style={{ fontWeight: '700', color: user.gender === 'L' ? '#60a5fa' : '#f472b6' }}>{user.gender === 'L' ? 'Lelaki' : 'Perempuan'}</span>
+                Role: <span style={{ textTransform: 'capitalize', color: '#34d399', fontWeight: '700' }}>{user.role}</span> | Gender: <span style={{ fontWeight: '700', color: user.gender === 'L' ? '#60a5fa' : '#f472b6' }}>{user.gender === 'L' ? 'Male' : 'Female'}</span>
               </div>
             </div>
 
             <button onClick={onLogout} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-              Log Keluar
+              Log Out
             </button>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button onClick={() => setActiveTab('login')} className={`btn ${activeTab === 'login' ? 'btn-primary' : 'btn-secondary'}`}>
-              Log Masuk
+              Log In
             </button>
             <button onClick={() => setActiveTab('register')} className={`btn ${activeTab === 'register' ? 'btn-primary' : 'btn-secondary'}`}>
-              Daftar Akaun
+              Register
             </button>
           </div>
         )}

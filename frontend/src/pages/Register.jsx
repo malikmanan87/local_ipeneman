@@ -8,7 +8,7 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
     email: '',
     phone: '',
     password: '',
-    role: 'companion', // default to companion or user
+    role: 'companion',
     student_staff_id: ''
   });
 
@@ -21,7 +21,7 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
     const cleanIc = icVal.replace(/[^0-9]/g, '');
     if (cleanIc.length >= 1) {
       const lastDigit = parseInt(cleanIc.slice(-1), 10);
-      setGenderPreview(lastDigit % 2 !== 0 ? 'Lelaki' : 'Perempuan');
+      setGenderPreview(lastDigit % 2 !== 0 ? 'Male' : 'Female');
     } else {
       setGenderPreview('');
     }
@@ -35,11 +35,11 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
     try {
       const res = await authAPI.register(formData);
       if (res.data.user) {
-        alert(res.data.message || 'Pendaftaran Berjaya!');
+        alert(res.data.message || 'Registration Successful!');
         onRegisterSuccess(res.data.user);
       }
     } catch (err) {
-      setError(err.response?.data?.messages?.error || err.response?.data?.message || 'Pendaftaran gagal. Pastikan No. IC atau Emel belum pernah didaftarkan.');
+      setError(err.response?.data?.messages?.error || err.response?.data?.message || 'Registration failed. Ensure IC or Email is not already registered.');
     } finally {
       setLoading(false);
     }
@@ -49,10 +49,10 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
     <div style={{ maxWidth: '500px', margin: '2rem auto' }}>
       <div className="glass-panel animate-fade-in" style={{ padding: '2rem' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.5rem', textAlign: 'center' }}>
-          Daftar Akaun iPeneman
+          Register iPeneman Account
         </h2>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '1.5rem' }}>
-          Sistem Peneman Pesakit - Hospital Sultan Zainal Abidin
+          Patient Companion System — Hospital Sultan Zainal Abidin
         </p>
 
         {error && (
@@ -63,24 +63,24 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Peranan Akaun</label>
+            <label>Account Role</label>
             <select
               className="form-select"
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             >
-              <option value="companion">Peneman Pesakit (Boleh Mohon Tugasan)</option>
-              <option value="user">Pesakit / Waris Pesakit (Boleh Cipta Permohonan)</option>
-              <option value="admin">Admin / Staff Wad HoSZA</option>
+              <option value="companion">Patient Companion (Can Apply for Duties)</option>
+              <option value="user">Patient / Family (Can Create Requests)</option>
+              <option value="admin">Admin / HoSZA Ward Staff</option>
             </select>
           </div>
 
           <div className="form-group">
-            <label>Nama Penuh (Seperti dalam IC)</label>
+            <label>Full Name (as per IC)</label>
             <input
               type="text"
               className="form-input"
-              placeholder="contoh: Ahmad bin Abdullah"
+              placeholder="e.g. Ahmad bin Abdullah"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
@@ -88,29 +88,29 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
           </div>
 
           <div className="form-group">
-            <label>No. Kad Pengenalan / MyKad</label>
+            <label>IC / MyKad Number</label>
             <input
               type="text"
               className="form-input"
-              placeholder="contoh: 980512-11-5431"
+              placeholder="e.g. 980512-11-5431"
               value={formData.ic_number}
               onChange={(e) => handleICChange(e.target.value)}
               required
             />
             {genderPreview && (
-              <div style={{ fontSize: '0.8rem', marginTop: '0.35rem', color: genderPreview === 'Lelaki' ? '#60a5fa' : '#f472b6', fontWeight: '700' }}>
-                ✓ Jantina Dikesan Automatik: {genderPreview} (Ditapis untuk keselamatan wad)
+              <div style={{ fontSize: '0.8rem', marginTop: '0.35rem', color: genderPreview === 'Male' ? '#60a5fa' : '#f472b6', fontWeight: '700' }}>
+                ✓ Auto-detected Gender: {genderPreview} (Filtered for ward safety)
               </div>
             )}
           </div>
 
           {formData.role === 'companion' && (
             <div className="form-group">
-              <label>No. Matrik Pelajar / Staf UniSZA (Jika ada)</label>
+              <label>Student / Staff ID (UniSZA if applicable)</label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="contoh: D202312345"
+                placeholder="e.g. D202312345"
                 value={formData.student_staff_id}
                 onChange={(e) => setFormData({ ...formData, student_staff_id: e.target.value })}
               />
@@ -118,11 +118,11 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
           )}
 
           <div className="form-group">
-            <label>Alamat Emel</label>
+            <label>Email Address</label>
             <input
               type="email"
               className="form-input"
-              placeholder="contoh: ahmad@gmail.com"
+              placeholder="e.g. ahmad@gmail.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
@@ -130,11 +130,11 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
           </div>
 
           <div className="form-group">
-            <label>No. Telefon</label>
+            <label>Phone Number</label>
             <input
               type="text"
               className="form-input"
-              placeholder="contoh: 012-3456789"
+              placeholder="e.g. 012-3456789"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               required
@@ -142,11 +142,11 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
           </div>
 
           <div className="form-group">
-            <label>Kata Laluan</label>
+            <label>Password</label>
             <input
               type="password"
               className="form-input"
-              placeholder="Minimum 6 abjad"
+              placeholder="Minimum 6 characters"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
@@ -154,14 +154,14 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem' }} disabled={loading}>
-            {loading ? 'Sila tunggu...' : 'Daftar Akaun'}
+            {loading ? 'Please wait...' : 'Register Account'}
           </button>
         </form>
 
         <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Sudah mendaftar?{' '}
+          Already registered?{' '}
           <span onClick={switchToLogin} style={{ color: '#34d399', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}>
-            Log Masuk
+            Log In
           </span>
         </div>
       </div>

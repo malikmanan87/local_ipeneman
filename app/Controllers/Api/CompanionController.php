@@ -27,12 +27,12 @@ class CompanionController extends ResourceController
         $user = $userModel->find($companionId);
 
         if (!$job || !$user) {
-            return $this->failNotFound('Permohonan atau Peneman tidak dijumpai.');
+            return $this->failNotFound('Request or Companion not found.');
         }
 
         // Strict gender match verification
         if ($job['patient_gender'] !== $user['gender']) {
-            return $this->failForbidden('Ralat Keselamatan: Peneman mesti daripada JANTINA YANG SAMA dengan pesakit.');
+            return $this->failForbidden('Safety Error: Companion must be of the SAME GENDER as the patient.');
         }
 
         $appModel = new ApplicationModel();
@@ -41,7 +41,7 @@ class CompanionController extends ResourceController
                              ->first();
 
         if ($existing) {
-            return $this->fail('Anda telah memohon tugasan ini sebelum ini.');
+            return $this->fail('You have already applied for this duty request.');
         }
 
         $appModel->insert([
@@ -52,7 +52,7 @@ class CompanionController extends ResourceController
 
         return $this->respondCreated([
             'status'  => 201,
-            'message' => 'Permohonan tugasan berjaya dihantar. Menunggu kelulusan waris/admin HoSZA.'
+            'message' => 'Duty application submitted successfully. Awaiting family/admin approval.'
         ]);
     }
 
@@ -63,8 +63,8 @@ class CompanionController extends ResourceController
     {
         $requestModel = new RequestModel();
         $duties = $requestModel->where('assigned_companion_id', $companionId)
-                              ->orderBy('shift_date', 'DESC')
-                              ->findAll();
+                               ->orderBy('shift_date', 'DESC')
+                               ->findAll();
 
         return $this->respond($duties);
     }
@@ -86,7 +86,7 @@ class CompanionController extends ResourceController
             'request_id'   => $requestId,
             'companion_id' => $companionId,
             'check_in'     => date('Y-m-d H:i:s'),
-            'care_notes'   => json_encode([['time' => date('H:i'), 'note' => 'Peneman tiba & daftar masuk di Wad HoSZA']]),
+            'care_notes'   => json_encode([['time' => date('H:i'), 'note' => 'Companion arrived & checked in at HoSZA Ward']]),
             'qr_token'     => $qrToken
         ]);
 
@@ -94,7 +94,7 @@ class CompanionController extends ResourceController
 
         return $this->respond([
             'status'   => 200,
-            'message'  => 'Check-in berjaya di Wad HoSZA. Sesi bertugas MULA.',
+            'message'  => 'Checked in successfully at HoSZA Ward. Duty session STARTED.',
             'qr_token' => $qrToken,
             'log_id'   => $logId
         ]);
@@ -126,7 +126,7 @@ class CompanionController extends ResourceController
 
         return $this->respond([
             'status'  => 200,
-            'message' => 'Check-out berjaya. Sesi bertugas PENUH di HoSZA telah SELESAI.'
+            'message' => 'Checked out successfully. Full duty session at HoSZA has been COMPLETED.'
         ]);
     }
 
@@ -142,7 +142,7 @@ class CompanionController extends ResourceController
         $log = $dutyLogModel->where('request_id', $requestId)->orderBy('id', 'DESC')->first();
 
         if (!$log) {
-            return $this->failNotFound('Sesi tugas tidak dijumpai.');
+            return $this->failNotFound('Duty session not found.');
         }
 
         $existingNotes = json_decode($log['care_notes'], true) ?? [];
@@ -157,7 +157,7 @@ class CompanionController extends ResourceController
 
         return $this->respond([
             'status'  => 200,
-            'message' => 'Catatan jagaan berjaya ditambah.',
+            'message' => 'Care note added successfully.',
             'notes'   => $existingNotes
         ]);
     }

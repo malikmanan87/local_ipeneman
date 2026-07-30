@@ -240,6 +240,10 @@ export default function AdminDashboard({ user }) {
 
   const activeDutiesList = requests.filter(r => r.status === 'in_progress' || r.status === 'assigned');
 
+  // Dynamic Financial Sums for Stat Cards
+  const totalGrandSum = requests.reduce((sum, r) => sum + (parseFloat(r.allowance_amount || 0) + parseFloat(r.tip_amount || 0)), 0);
+  const totalDisbursedSum = requests.filter(r => r.status === 'completed').reduce((sum, r) => sum + (parseFloat(r.allowance_amount || 0) + parseFloat(r.tip_amount || 0)), 0);
+
   // Accurate counts from actual allUsers list
   const userCounts = {
     all:       allUsers.length,
@@ -293,7 +297,7 @@ export default function AdminDashboard({ user }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
           {[
             { label: 'Ward Requests',     value: stats.total_requests,    sub: 'All time',              icon: '📋', color: '#f59e0b', tab: 'requests' },
-            { label: 'Financial Ledger',  value: `RM ${parseFloat(stats.grand_total_finance || 0).toFixed(0)}`, sub: `RM ${parseFloat(stats.total_completed_payout || 0).toFixed(0)} disbursed`, icon: '💵', color: '#34d399', tab: 'finance' },
+            { label: 'Financial Ledger',  value: `RM ${totalGrandSum.toFixed(2)}`, sub: `RM ${totalDisbursedSum.toFixed(2)} disbursed`, icon: '💵', color: '#34d399', tab: 'finance' },
             { label: 'Pending Approvals', value: stats.pending_approvals, sub: 'Awaiting admin review', icon: '🔔', color: '#f472b6', tab: 'approvals', alert: stats.pending_approvals > 0 },
             { label: 'Total Users',       value: stats.total_users,       sub: `${stats.total_companions} companions · ${stats.total_families} family`, icon: '👥', color: '#38bdf8', tab: 'users' },
           ].map(s => (
@@ -448,6 +452,21 @@ export default function AdminDashboard({ user }) {
             return true;
           });
 
+          // Accurate dynamic calculations directly from requests array
+          const completedPayoutCalc = requests
+            .filter(r => r.status === 'completed')
+            .reduce((sum, r) => sum + (parseFloat(r.allowance_amount || 0) + parseFloat(r.tip_amount || 0)), 0);
+
+          const pendingPayoutCalc = requests
+            .filter(r => r.status === 'in_progress' || r.status === 'assigned' || r.status === 'open')
+            .reduce((sum, r) => sum + (parseFloat(r.allowance_amount || 0) + parseFloat(r.tip_amount || 0)), 0);
+
+          const grandTotalCalc = requests
+            .reduce((sum, r) => sum + (parseFloat(r.allowance_amount || 0) + parseFloat(r.tip_amount || 0)), 0);
+
+          const tipsCalc = requests
+            .reduce((sum, r) => sum + parseFloat(r.tip_amount || 0), 0);
+
           return (
             <div className="animate-fade-in">
               {/* Unified Financial Summary Panel with Separators */}
@@ -458,7 +477,7 @@ export default function AdminDashboard({ user }) {
                   <div style={{ paddingRight: '0.75rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Disbursed Payout (Completed)</div>
                     <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#34d399', marginTop: '0.2rem' }}>
-                      RM {parseFloat(stats.total_completed_payout || 0).toFixed(2)}
+                      RM {completedPayoutCalc.toFixed(2)}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Full duty completed & verified</div>
                   </div>
@@ -467,7 +486,7 @@ export default function AdminDashboard({ user }) {
                   <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.1rem', paddingRight: '0.75rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pending Shift Payout</div>
                     <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#fbbf24', marginTop: '0.2rem' }}>
-                      RM {parseFloat(stats.total_pending_payout || 0).toFixed(2)}
+                      RM {pendingPayoutCalc.toFixed(2)}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Reserved for active/open shifts</div>
                   </div>
@@ -476,7 +495,7 @@ export default function AdminDashboard({ user }) {
                   <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.1rem', paddingRight: '0.75rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Grand Total Finance Value</div>
                     <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#38bdf8', marginTop: '0.2rem' }}>
-                      RM {parseFloat(stats.grand_total_finance || 0).toFixed(2)}
+                      RM {grandTotalCalc.toFixed(2)}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>All-time total shift value</div>
                   </div>
@@ -485,7 +504,7 @@ export default function AdminDashboard({ user }) {
                   <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.1rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Tips / Bonus Collected</div>
                     <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#a78bfa', marginTop: '0.2rem' }}>
-                      RM {parseFloat(stats.total_tips || 0).toFixed(2)}
+                      RM {tipsCalc.toFixed(2)}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Optional tips from patient family</div>
                   </div>

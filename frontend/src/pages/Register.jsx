@@ -34,12 +34,16 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
 
     try {
       const res = await authAPI.register(formData);
-      if (res.data.user) {
-        alert(res.data.message || 'Registration Successful!');
-        onRegisterSuccess(res.data.user);
+      if (res.status === 201 || res.data.status === 201 || res.data.message) {
+        alert('✓ ' + (res.data.message || 'Registration submitted successfully! Awaiting Admin approval before login.'));
+        switchToLogin();
       }
     } catch (err) {
-      setError(err.response?.data?.messages?.error || err.response?.data?.message || 'Registration failed. Ensure IC or Email is not already registered.');
+      const errMsgs = err.response?.data?.messages;
+      const errorText = typeof errMsgs === 'object' 
+        ? Object.values(errMsgs).join(' ') 
+        : (err.response?.data?.message || 'Registration failed. Ensure IC or Email is not already registered.');
+      setError(errorText);
     } finally {
       setLoading(false);
     }

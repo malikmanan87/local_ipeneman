@@ -61,7 +61,7 @@ class AuthController extends ResourceController
         return $this->respondCreated([
             'status'  => 201,
             'message' => 'Registration submitted successfully! Your account is pending verification and approval by HoSZA Admin before login.',
-            'user'    => null
+            'user'    => $user
         ]);
     }
 

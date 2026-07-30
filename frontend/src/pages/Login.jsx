@@ -105,6 +105,13 @@ export default function Login({ onLoginSuccess, switchToRegister }) {
             >
               👑 <strong>Admin System (HoSZA):</strong> admin@hosza.my
             </button>
+            <button
+              onClick={() => handleQuickLogin('siti@gmail.com')}
+              type="button"
+              style={{ padding: '0.4rem', borderRadius: '6px', background: 'rgba(236, 72, 153, 0.2)', border: '1px solid #ec4899', color: '#f472b6', cursor: 'pointer', textAlign: 'left' }}
+            >
+              👩‍🦱 <strong>Peneman Perempuan:</strong> siti@gmail.com
+            </button>
 
             <button
               onClick={() => handleQuickLogin('ahmad@gmail.com')}

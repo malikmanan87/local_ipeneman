@@ -97,6 +97,7 @@ export default function AdminDashboard({ user }) {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showApplicantsModal, setShowApplicantsModal] = useState(false);
   const [showVerifyPassModal, setShowVerifyPassModal] = useState(false);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
 
   const [inputPassCode, setInputPassCode] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
@@ -207,7 +208,7 @@ export default function AdminDashboard({ user }) {
     { key: 'requests',      label: 'Ward Requests',    icon: '📋', count: requests.length,        color: '#f59e0b' },
     { key: 'active_duties', label: 'Active Shifts',    icon: '🔄', count: activeDutiesList.length, color: '#34d399' },
     { key: 'approvals',     label: 'Pending Approvals',icon: '🔔', count: unverifiedUsers.length,  color: '#f472b6' },
-    { key: 'users',         label: 'User Directory',   icon: '👥', count: allUsers.length,         color: '#38bdf8' },
+    { key: 'users',         label: 'Total Users',      icon: '👥', count: allUsers.length,         color: '#38bdf8' },
   ];
 
   return (
@@ -241,10 +242,10 @@ export default function AdminDashboard({ user }) {
         {/* ── Stat Cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
           {[
-            { label: 'Total Users',       value: stats.total_users,       sub: `${stats.total_companions} companions · ${stats.total_families} family`, icon: '👥', color: '#38bdf8', tab: 'users' },
             { label: 'Ward Requests',     value: stats.total_requests,    sub: 'All time',              icon: '📋', color: '#f59e0b', tab: 'requests' },
             { label: 'Active Shifts',     value: stats.active_duties,     sub: 'Currently on duty',     icon: '🔄', color: '#34d399', tab: 'active_duties' },
             { label: 'Pending Approvals', value: stats.pending_approvals, sub: 'Awaiting admin review', icon: '🔔', color: '#f472b6', tab: 'approvals', alert: stats.pending_approvals > 0 },
+            { label: 'Total Users',       value: stats.total_users,       sub: `${stats.total_companions} companions · ${stats.total_families} family`, icon: '👥', color: '#38bdf8', tab: 'users' },
           ].map(s => (
             <div
               key={s.tab}
@@ -277,95 +278,86 @@ export default function AdminDashboard({ user }) {
           <button onClick={() => setShowSettingsModal(true)} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.82rem', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>Edit Rates</button>
         </div>
 
-        {/* ── Tab Bar ── */}
-        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              style={{
-                padding: '0.5rem 1.1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer',
-                border: activeTab === t.key ? `1.5px solid ${t.color}` : '1.5px solid transparent',
-                background: activeTab === t.key ? `${t.color}18` : 'rgba(255,255,255,0.05)',
-                color: activeTab === t.key ? t.color : 'var(--text-muted)',
-                transition: 'all 0.18s ease',
-              }}
-            >
-              {t.icon} {t.label}
-              <span style={{ marginLeft: '0.4rem', background: activeTab === t.key ? `${t.color}30` : 'rgba(255,255,255,0.08)', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontSize: '0.75rem' }}>
-                {t.count}
-              </span>
-            </button>
-          ))}
-        </div>
+
 
         {/* ── Tab: Ward Requests ── */}
-        {activeTab === 'requests' && (
-          <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 Ward Requests Overview</h2>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{requests.length} total records</span>
-            </div>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
-            ) : requests.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No ward requests found.</div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
-                  <thead>
-                    <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                      {['Pass Code', 'Creator', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Status', ''].map(h => (
-                        <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {requests.map((req, i) => (
-                      <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                        <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          {req.created_by_role === 'admin'
-                            ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>HoSZA On-Behalf</span>
-                            : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#38bdf8', background: 'rgba(56,189,248,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>Patient Family</span>
-                          }
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
-                          <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.patient_rn} · {req.patient_gender === 'L' ? '🔵 Male' : '🩷 Female'}</div>
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          <div>{req.ward_name}</div>
-                          <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.bed_number}</div>
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                          <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</div>
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem' }}><SectionBadge status={req.status} /></td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.4rem' }}>
-                            {req.status === 'open' && (
+        {activeTab === 'requests' && (() => {
+          const openRequests = requests.filter(r => r.status === 'open');
+          const completedRequests = requests.filter(r => r.status === 'completed');
+          return (
+            <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 Ward Requests Overview</h2>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{openRequests.length} open requests</div>
+                </div>
+                <button
+                  onClick={() => setShowCompletedModal(true)}
+                  style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', borderRadius: '8px', border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(148,163,184,0.08)', color: '#94a3b8', cursor: 'pointer', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  ✅ Completed Requests
+                  <span style={{ background: 'rgba(148,163,184,0.2)', borderRadius: '9999px', padding: '0.05rem 0.5rem', fontSize: '0.73rem' }}>{completedRequests.length}</span>
+                </button>
+              </div>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
+              ) : openRequests.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No open ward requests at this time.</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                        {['Pass Code', 'Creator', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Status', ''].map(h => (
+                          <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {openRequests.map((req, i) => (
+                        <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            {req.created_by_role === 'admin'
+                              ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>HoSZA On-Behalf</span>
+                              : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#38bdf8', background: 'rgba(56,189,248,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>Patient Family</span>
+                            }
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
+                            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.patient_rn} · {req.patient_gender === 'L' ? '🔵 Male' : '🩷 Female'}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <div>{req.ward_name}</div>
+                            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.bed_number}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}><SectionBadge status={req.status} /></td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <div style={{ display: 'flex', gap: '0.4rem' }}>
                               <button onClick={() => handleOpenApplicants(req)} className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem' }}>
                                 👥 Applicants
                               </button>
-                            )}
-                            <button
-                              onClick={() => { setInputPassCode(req.request_code); setVerificationResult(null); setShowVerifyPassModal(true); }}
-                              style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.08)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
-                            >
-                              🔍 Pass
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+                              <button
+                                onClick={() => { setInputPassCode(req.request_code); setVerificationResult(null); setShowVerifyPassModal(true); }}
+                                style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.08)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
+                              >
+                                🔍 Pass
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Tab: Active Shifts ── */}
         {activeTab === 'active_duties' && (
@@ -463,7 +455,7 @@ export default function AdminDashboard({ user }) {
         {activeTab === 'users' && (
           <div className="animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>👥 Registered Users Directory</h2>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>👥 Total Users</h2>
               {/* Role filter pills — counts from actual allUsers array */}
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 {[
@@ -694,6 +686,63 @@ export default function AdminDashboard({ user }) {
           </div>
         </div>
       )}
+      {/* Modal: Completed Requests */}
+      {showCompletedModal && (() => {
+        const completedRequests = requests.filter(r => r.status === 'completed');
+        return (
+          <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowCompletedModal(false)}>
+            <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '820px', padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontWeight: '800', fontSize: '1.1rem' }}>✅ Completed Requests</h3>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{completedRequests.length} records</div>
+                </div>
+                <button onClick={() => setShowCompletedModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+              </div>
+              {completedRequests.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No completed requests yet.</div>
+              ) : (
+                <div style={{ overflowX: 'auto', maxHeight: '65vh', overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                      <tr style={{ background: 'rgba(15,23,42,0.95)' }}>
+                        {['Pass Code', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Creator'].map(h => (
+                          <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completedRequests.map((req, i) => (
+                        <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#94a3b8', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
+                            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.patient_rn} · {req.patient_gender === 'L' ? '🔵 Male' : '🩷 Female'}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <div>{req.ward_name}</div>
+                            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.bed_number}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            {req.created_by_role === 'admin'
+                              ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>HoSZA On-Behalf</span>
+                              : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#38bdf8', background: 'rgba(56,189,248,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>Patient Family</span>
+                            }
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

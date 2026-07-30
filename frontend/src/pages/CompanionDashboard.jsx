@@ -88,12 +88,6 @@ export default function CompanionDashboard({ user }) {
   const activeDuties = myDuties.filter(d => d.status === 'assigned' || d.status === 'in_progress');
   const completedDuties = myDuties.filter(d => d.status === 'completed');
 
-  const TABS = [
-    { key: 'duties',    label: 'My Duties',        icon: '📋', count: myDuties.length,        color: '#34d399' },
-    { key: 'jobs',      label: 'Open Opportunities',icon: '🔍', count: availableJobs.length,    color: '#38bdf8' },
-    { key: 'ratings',   label: 'Ratings & Reviews', icon: '⭐', count: ratingsData.total_reviews, color: '#f59e0b' },
-  ];
-
   return (
     <div style={{ background: 'var(--bg-dark)', minHeight: '100vh' }}>
       <div className="container" style={{ maxWidth: '1100px', padding: '2rem 1.5rem' }}>
@@ -145,28 +139,6 @@ export default function CompanionDashboard({ user }) {
               <div style={{ fontSize: '1.6rem', fontWeight: '800', color: s.color, lineHeight: 1 }}>{s.value}</div>
               <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#e2e8f0', marginTop: '0.3rem' }}>{s.label}</div>
             </div>
-          ))}
-        </div>
-
-        {/* ── Tab Bar ── */}
-        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              style={{
-                padding: '0.5rem 1.1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer',
-                border: activeTab === t.key ? `1.5px solid ${t.color}` : '1.5px solid transparent',
-                background: activeTab === t.key ? `${t.color}18` : 'rgba(255,255,255,0.05)',
-                color: activeTab === t.key ? t.color : 'var(--text-muted)',
-                transition: 'all 0.18s ease',
-              }}
-            >
-              {t.icon} {t.label}
-              <span style={{ marginLeft: '0.4rem', background: activeTab === t.key ? `${t.color}30` : 'rgba(255,255,255,0.08)', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontSize: '0.75rem' }}>
-                {t.count}
-              </span>
-            </button>
           ))}
         </div>
 

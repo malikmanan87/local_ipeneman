@@ -7,6 +7,12 @@ export default function AdminDashboard({ user }) {
   const [showOnBehalfModal, setShowOnBehalfModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showApplicantsModal, setShowApplicantsModal] = useState(false);
+  const [showVerifyPassModal, setShowVerifyPassModal] = useState(false);
+
+  const [inputPassCode, setInputPassCode] = useState('');
+  const [verificationResult, setVerificationResult] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [applicants, setApplicants] = useState([]);
   const [loadingApplicants, setLoadingApplicants] = useState(false);
@@ -60,6 +66,30 @@ export default function AdminDashboard({ user }) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleOpenVerifyPassModal = (reqCode = '') => {
+    setInputPassCode(reqCode);
+    setVerificationResult(null);
+    setShowVerifyPassModal(true);
+  };
+
+  const handleVerifyPassSubmit = async (e) => {
+    e.preventDefault();
+    if (!inputPassCode.trim()) return;
+    setVerifying(true);
+    setVerificationResult(null);
+    try {
+      const res = await adminAPI.verifyPass(inputPassCode.trim());
+      setVerificationResult(res.data);
+    } catch (err) {
+      setVerificationResult({
+        is_valid: false,
+        error_message: err.response?.data?.messages?.error || err.response?.data?.message || 'Invalid or unassigned Pass Code.'
+      });
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   const handleOpenApplicantsModal = async (req) => {
     setSelectedRequest(req);
@@ -119,17 +149,20 @@ export default function AdminDashboard({ user }) {
       {/* Admin Header */}
       <div className="glass-panel" style={{ padding: '1.75rem', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.2), rgba(15, 23, 42, 0.4))' }}>
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Hospital Sultan Zainal Abidin (HoSZA) Admin Portal</h2>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Hospital Sultan Zainal Abidin (HoSZA) Admin & Ward Staff Portal</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Ward Patient Companion Oversight & Unaccompanied Patient On-Behalf Request Module
+            Nurse Entry Pass Verification & Unaccompanied Patient On-Behalf Module
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button onClick={() => handleOpenVerifyPassModal('')} className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #059669, #0284c7)' }}>
+            📷 Scan / Verify Ward E-Pass
+          </button>
           <button onClick={() => setShowSettingsModal(true)} className="btn btn-secondary" style={{ border: '1px solid #34d399', color: '#34d399' }}>
-            ⚙️ Payment Rate Settings
+            ⚙️ Payment Rates
           </button>
           <button onClick={() => setShowOnBehalfModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
-            🏥 + Request On-Behalf (No Family)
+            🏥 + Request On-Behalf
           </button>
         </div>
       </div>
@@ -185,7 +218,7 @@ export default function AdminDashboard({ user }) {
 
       {/* Overview Table */}
       <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '1rem' }}>
-        HoSZA Wards Complete Request Overview & Approval
+        HoSZA Wards Complete Request Overview & Nurse Pass Verification
       </h3>
 
       {loading ? (
@@ -202,7 +235,7 @@ export default function AdminDashboard({ user }) {
                 <th style={{ padding: '0.75rem' }}>Ward Location</th>
                 <th style={{ padding: '0.75rem' }}>Date & Time</th>
                 <th style={{ padding: '0.75rem' }}>Status</th>
-                <th style={{ padding: '0.75rem' }}>Action</th>
+                <th style={{ padding: '0.75rem' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -228,22 +261,99 @@ export default function AdminDashboard({ user }) {
                     <span className={`badge badge-${req.status}`}>{req.status}</span>
                   </td>
                   <td style={{ padding: '0.75rem' }}>
-                    {req.status === 'open' ? (
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      {req.status === 'open' && (
+                        <button
+                          onClick={() => handleOpenApplicantsModal(req)}
+                          className="btn btn-primary"
+                          style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
+                        >
+                          👥 Applicants
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleOpenApplicantsModal(req)}
-                        className="btn btn-primary"
-                        style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                        onClick={() => handleOpenVerifyPassModal(req.request_code)}
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem', border: '1px solid #34d399', color: '#34d399' }}
                       >
-                        👥 Review Applicants
+                        🔍 Verify Pass
                       </button>
-                    ) : (
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Assigned</span>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal Nurse Verify E-Pass Scanner */}
+      {showVerifyPassModal && (
+        <div className="modal-overlay">
+          <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '560px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>📷 Nurse / Staff Ward Pass Verification</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Scan or type Digital Ward Entry Pass Code / QR Token</p>
+              </div>
+              <button onClick={() => setShowVerifyPassModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+            </div>
+
+            <form onSubmit={handleVerifyPassSubmit} style={{ marginBottom: '1.5rem' }}>
+              <div className="form-group">
+                <label>Enter Pass Code / QR Token</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. IPENEMAN-20260730-8472"
+                    value={inputPassCode}
+                    onChange={(e) => setInputPassCode(e.target.value)}
+                    required
+                  />
+                  <button type="submit" className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #059669, #0284c7)' }}>
+                    {verifying ? 'Verifying...' : 'Verify'}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {/* Verification Result Display */}
+            {verificationResult && (
+              <div>
+                {verificationResult.is_valid ? (
+                  <div style={{ background: 'rgba(5, 150, 105, 0.25)', border: '2px solid #34d399', borderRadius: '12px', padding: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#34d399', fontWeight: '800', fontSize: '1.1rem', marginBottom: '0.75rem' }}>
+                      ✓ VALID DIGITAL WARD ENTRY PASS (HOSZA)
+                    </div>
+
+                    <div style={{ fontSize: '0.85rem', lineHeight: '1.6', color: '#e2e8f0' }}>
+                      <p>👨‍🦱 <strong>Companion Name:</strong> {verificationResult.companion?.name}</p>
+                      <p>🪪 <strong>IC / MyKad:</strong> {verificationResult.companion?.ic_number}</p>
+                      <p>📱 <strong>Phone:</strong> {verificationResult.companion?.phone}</p>
+                      <p>🎓 <strong>UniSZA ID:</strong> {verificationResult.companion?.profile?.student_staff_id || 'N/A'}</p>
+                      <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '0.5rem 0' }} />
+                      <p>🏥 <strong>Authorized Ward:</strong> {verificationResult.request?.ward_name} ({verificationResult.request?.bed_number})</p>
+                      <p>👴 <strong>Patient Name (RN):</strong> {verificationResult.request?.patient_name} ({verificationResult.request?.patient_rn})</p>
+                      <p>⏰ <strong>Shift Hours:</strong> {verificationResult.request?.shift_date} ({verificationResult.request?.start_time} - {verificationResult.request?.end_time})</p>
+                      <p style={{ color: '#38bdf8' }}>🔒 <strong>Safety Filter:</strong> {verificationResult.request?.patient_gender === 'L' ? 'Male Companion for Male Patient (Verified)' : 'Female Companion for Female Patient (Verified)'}</p>
+                    </div>
+
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                      Verified At: {verificationResult.verified_at}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ background: 'rgba(225, 29, 72, 0.25)', border: '2px solid #f43f5e', borderRadius: '12px', padding: '1.25rem', color: '#fda4af' }}>
+                    <div style={{ fontWeight: '800', fontSize: '1.1rem', marginBottom: '0.5rem' }}>
+                      ⛔ INVALID OR UNAPPROVED PASS
+                    </div>
+                    <p style={{ fontSize: '0.85rem' }}>{verificationResult.error_message}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -478,7 +588,7 @@ export default function AdminDashboard({ user }) {
                 />
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', background: 'gradient(135deg, #f59e0b, #d97706)' }}>
                 Publish Ward Request
               </button>
             </form>

@@ -38,5 +38,6 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($
     $routes->get('admin/requests', 'AdminController::allRequests');
     $routes->get('admin/settings', 'AdminController::getSettings');
     $routes->post('admin/settings/update', 'AdminController::updateSettings');
+    $routes->post('admin/verify-pass', 'AdminController::verifyPass');
 });
 

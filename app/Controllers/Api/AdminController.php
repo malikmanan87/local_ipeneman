@@ -29,16 +29,33 @@ class AdminController extends ResourceController
         $totalRequests = $requestModel->countAllResults(false);
         $activeDuties  = $requestModel->where('status', 'in_progress')->countAllResults(false);
 
+        // Financial calculations
+        $allReqs = $requestModel->findAll();
+        $totalCompletedPayout = 0;
+        $totalPendingPayout   = 0;
+
+        foreach ($allReqs as $r) {
+            $amt = floatval($r['allowance_amount'] ?? 0) + floatval($r['tip_amount'] ?? 0);
+            if ($r['status'] === 'completed') {
+                $totalCompletedPayout += $amt;
+            } else {
+                $totalPendingPayout += $amt;
+            }
+        }
+
         return $this->respond([
             'status' => 200,
             'stats'  => [
-                'total_users'       => $totalUsers,
-                'total_companions'  => $totalCompanions,
-                'total_families'    => $totalFamilies,
-                'total_staff'       => $totalStaff,
-                'pending_approvals' => $pendingApprovals,
-                'total_requests'    => $totalRequests,
-                'active_duties'     => $activeDuties,
+                'total_users'            => $totalUsers,
+                'total_companions'       => $totalCompanions,
+                'total_families'         => $totalFamilies,
+                'total_staff'            => $totalStaff,
+                'pending_approvals'      => $pendingApprovals,
+                'total_requests'         => $totalRequests,
+                'active_duties'          => $activeDuties,
+                'total_completed_payout' => number_format($totalCompletedPayout, 2, '.', ''),
+                'total_pending_payout'   => number_format($totalPendingPayout, 2, '.', ''),
+                'grand_total_finance'    => number_format($totalCompletedPayout + $totalPendingPayout, 2, '.', ''),
             ]
         ]);
     }
@@ -84,6 +101,24 @@ class AdminController extends ResourceController
             // Rating & Review
             $rating = $ratingModel->where('request_id', $req['id'])->first();
             $req['rating'] = $rating ?: null;
+
+            // Finance details
+            $allowance = floatval($req['allowance_amount'] ?? 0);
+            $tip       = floatval($req['tip_amount'] ?? 0);
+            $total     = $allowance + $tip;
+            $statusStr = 'Unassigned';
+            if ($req['status'] === 'completed') {
+                $statusStr = 'Disbursed / Paid';
+            } else if (!empty($req['assigned_companion_id'])) {
+                $statusStr = 'Pending Shift';
+            }
+
+            $req['finance'] = [
+                'allowance_amount' => number_format($allowance, 2, '.', ''),
+                'tip_amount'       => number_format($tip, 2, '.', ''),
+                'total_payout'     => number_format($total, 2, '.', ''),
+                'payment_status'   => $statusStr
+            ];
         }
 
         return $this->respond($requests);

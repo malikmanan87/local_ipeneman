@@ -87,6 +87,7 @@ export default function CompanionDashboard({ user }) {
 
   const activeDuties = myDuties.filter(d => d.status === 'assigned' || d.status === 'in_progress');
   const completedDuties = myDuties.filter(d => d.status === 'completed');
+  const totalEarnings = completedDuties.reduce((acc, d) => acc + parseFloat(d.allowance_amount || 0) + parseFloat(d.tip_amount || 0), 0);
 
   return (
     <div style={{ background: 'var(--bg-dark)', minHeight: '100vh' }}>
@@ -108,7 +109,11 @@ export default function CompanionDashboard({ user }) {
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.875rem', color: '#f59e0b', fontWeight: '700', textAlign: 'center' }}>
+            <div style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.35)', padding: '0.55rem 1.1rem', borderRadius: '10px', fontSize: '0.9rem', color: '#34d399', fontWeight: '800', textAlign: 'center' }}>
+              💰 RM {totalEarnings.toFixed(2)}
+              <div style={{ fontSize: '0.72rem', fontWeight: '500', color: '#94a3b8', marginTop: '0.05rem' }}>Earned from Shifts</div>
+            </div>
+            <div style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)', padding: '0.55rem 1.1rem', borderRadius: '10px', fontSize: '0.9rem', color: '#f59e0b', fontWeight: '700', textAlign: 'center' }}>
               ⭐ {parseFloat(ratingsData.rating_avg || 5.0).toFixed(2)} / 5.0
               <div style={{ fontSize: '0.72rem', fontWeight: '400', color: '#94a3b8', marginTop: '0.05rem' }}>{ratingsData.total_reviews} reviews</div>
             </div>

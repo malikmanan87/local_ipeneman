@@ -270,14 +270,38 @@ export default function AdminDashboard({ user }) {
           ))}
         </div>
 
-        {/* ── Rate Banner ── */}
-        <div className="glass-panel" style={{ padding: '0.9rem 1.35rem', marginBottom: '1.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', borderLeft: '3px solid #34d399' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            <strong style={{ color: '#34d399' }}>💰 Hourly Rate:</strong>{' '}
-            <strong style={{ color: '#f1f5f9' }}>RM {parseFloat(rateSettings.default_hourly_rate || 10).toFixed(2)}/hr</strong>
-            <span style={{ marginLeft: '0.75rem' }}>Range: RM {parseFloat(rateSettings.min_hourly_rate || 8).toFixed(2)} – RM {parseFloat(rateSettings.max_hourly_rate || 30).toFixed(2)}/hr</span>
+        {/* ── Finance & Rate Summary Banner ── */}
+        <div className="glass-panel" style={{ padding: '1.1rem 1.35rem', marginBottom: '1.75rem', borderLeft: '4px solid #34d399', background: 'linear-gradient(135deg, rgba(5,150,105,0.08), rgba(15,23,42,0.6))' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <div style={{ fontSize: '0.78rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>
+                💵 Financial Payout Oversight (Shift Earnings)
+              </div>
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.86rem', marginTop: '0.35rem' }}>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Disbursed Payout: </span>
+                  <strong style={{ color: '#34d399', fontSize: '1.05rem' }}>RM {parseFloat(stats.total_completed_payout || 0).toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Pending Shift Payout: </span>
+                  <strong style={{ color: '#fbbf24', fontSize: '1.05rem' }}>RM {parseFloat(stats.total_pending_payout || 0).toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Grand Total Value: </span>
+                  <strong style={{ color: '#38bdf8', fontSize: '1.05rem' }}>RM {parseFloat(stats.grand_total_finance || 0).toFixed(2)}</strong>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                <div>Hourly Rate: <strong style={{ color: '#f1f5f9' }}>RM {parseFloat(rateSettings.default_hourly_rate || 10).toFixed(2)}/hr</strong></div>
+                <div style={{ fontSize: '0.73rem' }}>Range: RM {parseFloat(rateSettings.min_hourly_rate || 8).toFixed(2)} – {parseFloat(rateSettings.max_hourly_rate || 30).toFixed(2)}</div>
+              </div>
+              <button onClick={() => setShowSettingsModal(true)} className="btn btn-secondary" style={{ fontSize: '0.78rem', padding: '0.45rem 0.85rem' }}>
+                ⚙️ Rate Settings
+              </button>
+            </div>
           </div>
-          <button onClick={() => setShowSettingsModal(true)} style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: '0.82rem', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}>Edit Rates</button>
         </div>
 
         {/* ── Tab: Ward Requests ── */}
@@ -337,7 +361,7 @@ export default function AdminDashboard({ user }) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                     <thead>
                       <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                        {['Pass Code', 'Creator', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Status', ''].map(h => (
+                        {['Pass Code', 'Creator', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Payout (RM)', 'Status', ''].map(h => (
                           <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -363,6 +387,9 @@ export default function AdminDashboard({ user }) {
                           <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
                             <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#34d399', fontFamily: 'monospace' }}>
+                            RM {(parseFloat(req.allowance_amount || 0) + parseFloat(req.tip_amount || 0)).toFixed(2)}
                           </td>
                           <td style={{ padding: '0.85rem 1rem' }}><SectionBadge status={req.status} /></td>
                           <td style={{ padding: '0.85rem 1rem' }}>
@@ -812,6 +839,41 @@ export default function AdminDashboard({ user }) {
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '0.2rem' }}>{selectedDetailRequest.task_details}</div>
                 </div>
               )}
+            </div>
+
+            {/* Financial & Shift Earnings Breakdown */}
+            <div style={{ background: 'rgba(52,211,153,0.05)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+              <div style={{ fontWeight: '700', color: '#34d399', marginBottom: '0.5rem', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>💵 Financial Payout Breakdown</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Base Allowance</div>
+                  <div style={{ fontWeight: '800', color: '#f1f5f9', marginTop: '0.2rem', fontSize: '0.95rem' }}>
+                    RM {parseFloat(selectedDetailRequest.allowance_amount || 0).toFixed(2)}
+                  </div>
+                </div>
+                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Tips / Bonus</div>
+                  <div style={{ fontWeight: '800', color: '#fbbf24', marginTop: '0.2rem', fontSize: '0.95rem' }}>
+                    RM {parseFloat(selectedDetailRequest.tip_amount || 0).toFixed(2)}
+                  </div>
+                </div>
+                <div style={{ background: 'rgba(52,211,153,0.15)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.3)' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: '700' }}>Total Companion Payout</div>
+                  <div style={{ fontWeight: '900', color: '#34d399', marginTop: '0.2rem', fontSize: '1.05rem' }}>
+                    RM {(parseFloat(selectedDetailRequest.allowance_amount || 0) + parseFloat(selectedDetailRequest.tip_amount || 0)).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.65rem', fontSize: '0.8rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Allowance Type: <strong style={{ color: '#e2e8f0', textTransform: 'capitalize' }}>{selectedDetailRequest.allowance_type || 'paid'}</strong></span>
+                <span style={{
+                  padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.73rem', fontWeight: '800',
+                  background: selectedDetailRequest.status === 'completed' ? 'rgba(5,150,105,0.2)' : 'rgba(245,158,11,0.2)',
+                  color: selectedDetailRequest.status === 'completed' ? '#34d399' : '#fbbf24'
+                }}>
+                  {selectedDetailRequest.status === 'completed' ? '✓ DISBURSED / PAID' : '⏳ PENDING SHIFT COMPLETION'}
+                </span>
+              </div>
             </div>
 
             {/* Assigned Companion Details */}

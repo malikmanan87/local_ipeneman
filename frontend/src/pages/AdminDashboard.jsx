@@ -798,7 +798,7 @@ export default function AdminDashboard({ user }) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                     <thead>
                       <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                        {['Name', 'IC / MyKad', 'Gender', 'Role', 'Contact', 'UniSZA ID', 'Account'].map(h => (
+                        {['No.', 'Name', 'IC / MyKad', 'Gender', 'Role', 'Contact', 'UniSZA ID', 'Account'].map(h => (
                           <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                         ))}
                       </tr>
@@ -806,6 +806,7 @@ export default function AdminDashboard({ user }) {
                     <tbody>
                       {filteredUsers.map((u, i) => (
                         <tr key={u.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
                           <td style={{ padding: '0.85rem 1rem', fontWeight: '700' }}>{u.name}</td>
                           <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{u.ic_number}</td>
                           <td style={{ padding: '0.85rem 1rem' }}>

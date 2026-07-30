@@ -49,7 +49,42 @@ class AdminController extends ResourceController
     public function allRequests()
     {
         $requestModel = new RequestModel();
+        $userModel    = new UserModel();
+        $dutyLogModel = new DutyLogModel();
+        $ratingModel  = new \App\Models\RatingModel();
+
         $requests     = $requestModel->orderBy('id', 'DESC')->findAll();
+
+        foreach ($requests as &$req) {
+            // Companion details if assigned
+            if (!empty($req['assigned_companion_id'])) {
+                $comp = $userModel->find($req['assigned_companion_id']);
+                if ($comp) {
+                    unset($comp['password']);
+                    $req['companion'] = $comp;
+                }
+            }
+
+            // Duty log (check-in, check-out, care_notes)
+            $dutyLog = $dutyLogModel->where('request_id', $req['id'])->orderBy('id', 'DESC')->first();
+            if ($dutyLog) {
+                $parsedNotes = [];
+                if (!empty($dutyLog['care_notes'])) {
+                    $parsed = json_decode($dutyLog['care_notes'], true);
+                    if (is_array($parsed)) {
+                        $parsedNotes = $parsed;
+                    }
+                }
+                $dutyLog['care_notes_list'] = $parsedNotes;
+                $req['duty_log'] = $dutyLog;
+            } else {
+                $req['duty_log'] = null;
+            }
+
+            // Rating & Review
+            $rating = $ratingModel->where('request_id', $req['id'])->first();
+            $req['rating'] = $rating ?: null;
+        }
 
         return $this->respond($requests);
     }

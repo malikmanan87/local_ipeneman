@@ -99,6 +99,8 @@ export default function AdminDashboard({ user }) {
   const [showApplicantsModal, setShowApplicantsModal] = useState(false);
   const [showVerifyPassModal, setShowVerifyPassModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedDetailRequest, setSelectedDetailRequest] = useState(null);
 
   const [inputPassCode, setInputPassCode] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
@@ -364,12 +366,18 @@ export default function AdminDashboard({ user }) {
                           </td>
                           <td style={{ padding: '0.85rem 1rem' }}><SectionBadge status={req.status} /></td>
                           <td style={{ padding: '0.85rem 1rem' }}>
-                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                               {req.status === 'open' && (
                                 <button onClick={() => handleOpenApplicants(req)} className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem' }}>
                                   👥 Applicants
                                 </button>
                               )}
+                              <button
+                                onClick={() => { setSelectedDetailRequest(req); setShowDetailModal(true); }}
+                                style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.08)', color: '#38bdf8', cursor: 'pointer', fontWeight: '700' }}
+                              >
+                                📄 Details
+                              </button>
                               <button
                                 onClick={() => { setInputPassCode(req.request_code); setVerificationResult(null); setShowVerifyPassModal(true); }}
                                 style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.08)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
@@ -772,6 +780,122 @@ export default function AdminDashboard({ user }) {
           </div>
         );
       })()}
+      {/* Modal: Comprehensive Request Details */}
+      {showDetailModal && selectedDetailRequest && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowDetailModal(false)}>
+          <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '680px', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <span style={{ fontWeight: '800', fontSize: '1.15rem', color: '#f59e0b', fontFamily: 'monospace' }}>{selectedDetailRequest.request_code}</span>
+                  <SectionBadge status={selectedDetailRequest.status} />
+                </div>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Patient: <strong style={{ color: '#f1f5f9' }}>{selectedDetailRequest.patient_name}</strong> ({selectedDetailRequest.patient_rn}) · {selectedDetailRequest.patient_gender === 'L' ? '🔵 Male' : '🩷 Female'}
+                </p>
+              </div>
+              <button onClick={() => setShowDetailModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+
+            {/* Ward & Shift Details */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', fontSize: '0.85rem', lineHeight: '1.6' }}>
+              <div style={{ fontWeight: '700', color: '#38bdf8', marginBottom: '0.4rem', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>🏥 Ward & Shift Info</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div><strong>Ward:</strong> {selectedDetailRequest.ward_name} ({selectedDetailRequest.bed_number})</div>
+                <div><strong>Shift Date:</strong> {selectedDetailRequest.shift_date}</div>
+                <div><strong>Scheduled Time:</strong> {selectedDetailRequest.start_time} – {selectedDetailRequest.end_time}</div>
+                <div><strong>Allowance:</strong> RM {parseFloat(selectedDetailRequest.allowance_amount || 0).toFixed(2)}</div>
+              </div>
+              {selectedDetailRequest.task_details && (
+                <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <strong>Task Details / Instructions:</strong>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '0.2rem' }}>{selectedDetailRequest.task_details}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Assigned Companion Details */}
+            <div style={{ background: 'rgba(52,211,153,0.05)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+              <div style={{ fontWeight: '700', color: '#34d399', marginBottom: '0.4rem', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>👨‍🦱 Companion Assigned</div>
+              {selectedDetailRequest.companion ? (
+                <div style={{ lineHeight: '1.65' }}>
+                  <div><strong style={{ color: '#f1f5f9' }}>{selectedDetailRequest.companion.name}</strong> ({selectedDetailRequest.companion.ic_number})</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                    📱 {selectedDetailRequest.companion.phone} · 📧 {selectedDetailRequest.companion.email}
+                    {selectedDetailRequest.companion.companion_profile?.student_staff_id && (
+                      <span style={{ color: '#34d399', marginLeft: '0.5rem' }}>· 🎓 UniSZA ID: {selectedDetailRequest.companion.companion_profile.student_staff_id}</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-muted)' }}>No companion assigned yet.</div>
+              )}
+            </div>
+
+            {/* Check-In & Check-Out Times */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+              <div style={{ fontWeight: '700', color: '#fbbf24', marginBottom: '0.5rem', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>🕒 Actual Check-In & Check-Out Logs</div>
+              {selectedDetailRequest.duty_log ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Actual Check-In</div>
+                    <div style={{ fontWeight: '700', color: selectedDetailRequest.duty_log.check_in ? '#34d399' : '#94a3b8', marginTop: '0.2rem' }}>
+                      {selectedDetailRequest.duty_log.check_in ? selectedDetailRequest.duty_log.check_in : 'Not checked in yet'}
+                    </div>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Actual Check-Out</div>
+                    <div style={{ fontWeight: '700', color: selectedDetailRequest.duty_log.check_out ? '#38bdf8' : '#94a3b8', marginTop: '0.2rem' }}>
+                      {selectedDetailRequest.duty_log.check_out ? selectedDetailRequest.duty_log.check_out : 'In progress / Not checked out'}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Duty shift has not started yet.</div>
+              )}
+            </div>
+
+            {/* Patient Care Notes */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
+              <div style={{ fontWeight: '700', color: '#a78bfa', marginBottom: '0.5rem', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📝 Patient Care Notes</div>
+              {selectedDetailRequest.duty_log && selectedDetailRequest.duty_log.care_notes_list && selectedDetailRequest.duty_log.care_notes_list.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {selectedDetailRequest.duty_log.care_notes_list.map((n, idx) => (
+                    <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '0.6rem 0.85rem', borderRadius: '8px', fontSize: '0.82rem', display: 'flex', gap: '0.6rem' }}>
+                      <span style={{ color: '#a78bfa', fontWeight: '700', whiteSpace: 'nowrap' }}>[{n.time || '—'}]</span>
+                      <span style={{ color: '#e2e8f0' }}>{n.note}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>No care notes recorded yet.</div>
+              )}
+            </div>
+
+            {/* Rating & Review */}
+            <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '12px', padding: '1rem', fontSize: '0.85rem' }}>
+              <div style={{ fontWeight: '700', color: '#f59e0b', marginBottom: '0.4rem', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>⭐ Rating & Review</div>
+              {selectedDetailRequest.rating ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
+                    <span style={{ fontSize: '1.1rem', color: '#fbbf24' }}>{'⭐'.repeat(parseInt(selectedDetailRequest.rating.rating || 5))}</span>
+                    <span style={{ fontWeight: '800', color: '#fbbf24' }}>{selectedDetailRequest.rating.rating} / 5.0</span>
+                  </div>
+                  {selectedDetailRequest.rating.review && (
+                    <p style={{ color: '#e2e8f0', fontSize: '0.83rem', fontStyle: 'italic', background: 'rgba(0,0,0,0.2)', padding: '0.65rem', borderRadius: '8px', marginTop: '0.4rem' }}>
+                      "{selectedDetailRequest.rating.review}"
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  {selectedDetailRequest.status === 'completed' ? 'No rating submitted yet by family.' : 'Rating will be available after shift completion.'}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

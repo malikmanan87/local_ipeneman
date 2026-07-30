@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import PatientDashboard from './pages/PatientDashboard';
 import CompanionDashboard from './pages/CompanionDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import NurseDashboard from './pages/NurseDashboard';
 
 export default function App() {
   // Restore user session from localStorage if available upon refresh
@@ -57,7 +58,7 @@ export default function App() {
             {user.role === 'companion' && <CompanionDashboard user={user} />}
             {user.role === 'user' && <PatientDashboard user={user} />}
             {user.role === 'admin' && <AdminDashboard user={user} />}
-            {user.role === 'staff' && <AdminDashboard user={user} />}
+            {user.role === 'staff' && <NurseDashboard user={user} />}
           </>
         )}
       </main>

@@ -39,5 +39,8 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($
     $routes->get('admin/settings', 'AdminController::getSettings');
     $routes->post('admin/settings/update', 'AdminController::updateSettings');
     $routes->post('admin/verify-pass', 'AdminController::verifyPass');
+    $routes->get('admin/unverified-users', 'AdminController::getUnverifiedUsers');
+    $routes->post('admin/verify-user', 'AdminController::verifyUser');
+    $routes->post('admin/reject-user', 'AdminController::rejectUser');
 });
 

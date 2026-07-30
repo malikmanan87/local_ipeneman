@@ -181,4 +181,72 @@ class AdminController extends ResourceController
                 : '✅ VALID PASS & APPROVED: Companion entry verified for HoSZA Ward.'
         ]);
     }
+
+    /**
+     * Get list of all pending unverified user accounts
+     */
+    public function getUnverifiedUsers()
+    {
+        $userModel = new UserModel();
+        $compModel = new \App\Models\CompanionProfileModel();
+
+        $unverifiedUsers = $userModel->where('is_verified', 0)->orderBy('id', 'DESC')->findAll();
+
+        foreach ($unverifiedUsers as &$user) {
+            unset($user['password']);
+            if ($user['role'] === 'companion') {
+                $user['companion_profile'] = $compModel->where('user_id', $user['id'])->first();
+            }
+        }
+
+        return $this->respond([
+            'status' => 200,
+            'total'  => count($unverifiedUsers),
+            'data'   => $unverifiedUsers
+        ]);
+    }
+
+    /**
+     * Approve & verify a user account
+     */
+    public function verifyUser()
+    {
+        $targetUserId = $this->request->getVar('user_id');
+
+        $userModel = new UserModel();
+        $user      = $userModel->find($targetUserId);
+
+        if (!$user) {
+            return $this->failNotFound('User account not found.');
+        }
+
+        $userModel->update($targetUserId, ['is_verified' => 1]);
+
+        return $this->respond([
+            'status'  => 200,
+            'message' => 'User account "' . $user['name'] . '" approved and activated successfully.'
+        ]);
+    }
+
+    /**
+     * Reject/Delete an unverified user account
+     */
+    public function rejectUser()
+    {
+        $targetUserId = $this->request->getVar('user_id');
+
+        $userModel = new UserModel();
+        $user      = $userModel->find($targetUserId);
+
+        if (!$user) {
+            return $this->failNotFound('User account not found.');
+        }
+
+        $userModel->delete($targetUserId);
+
+        return $this->respond([
+            'status'  => 200,
+            'message' => 'User account "' . $user['name'] . '" rejected and removed.'
+        ]);
+    }
 }

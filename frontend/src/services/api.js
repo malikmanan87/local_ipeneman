@@ -42,6 +42,9 @@ export const adminAPI = {
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (data) => api.post('/admin/settings/update', data),
   verifyPass: (passCode, staffUserId) => api.post('/admin/verify-pass', { pass_code: passCode, staff_user_id: staffUserId }),
+  getUnverifiedUsers: () => api.get('/admin/unverified-users'),
+  verifyUser: (userId) => api.post('/admin/verify-user', { user_id: userId }),
+  rejectUser: (userId) => api.post('/admin/reject-user', { user_id: userId }),
 };
 
 export default api;

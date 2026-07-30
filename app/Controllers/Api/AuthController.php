@@ -38,7 +38,7 @@ class AuthController extends ResourceController
             'phone'       => $this->request->getVar('phone'),
             'password'    => password_hash($this->request->getVar('password'), PASSWORD_BCRYPT),
             'role'        => $this->request->getVar('role'),
-            'is_verified' => 1
+            'is_verified' => 0
         ];
 
         $userId = $userModel->insert($userData);
@@ -60,8 +60,8 @@ class AuthController extends ResourceController
 
         return $this->respondCreated([
             'status'  => 201,
-            'message' => 'Registration successful. Gender automatically detected: ' . ($derivedGender === 'L' ? 'Male' : 'Female'),
-            'user'    => $user
+            'message' => 'Registration submitted successfully! Your account is pending verification and approval by HoSZA Admin before login.',
+            'user'    => null
         ]);
     }
 
@@ -75,6 +75,10 @@ class AuthController extends ResourceController
 
         if (!$user || !password_verify($password, $user['password'])) {
             return $this->failUnauthorized('Invalid email or password.');
+        }
+
+        if (empty($user['is_verified']) || intval($user['is_verified']) === 0) {
+            return $this->failForbidden('ACCOUNT PENDING VERIFICATION: Your account is pending verification and approval by HoSZA Admin. Please wait for Admin activation.');
         }
 
         unset($user['password']);

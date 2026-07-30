@@ -4,10 +4,13 @@ import { adminAPI, requestAPI } from '../services/api';
 export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState({ total_companions: 0, total_requests: 0, active_duties: 0, on_behalf_count: 0 });
   const [requests, setRequests] = useState([]);
+  const [unverifiedUsers, setUnverifiedUsers] = useState([]);
+  
   const [showOnBehalfModal, setShowOnBehalfModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showApplicantsModal, setShowApplicantsModal] = useState(false);
   const [showVerifyPassModal, setShowVerifyPassModal] = useState(false);
+  const [showUnverifiedModal, setShowUnverifiedModal] = useState(false);
 
   const [inputPassCode, setInputPassCode] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
@@ -56,6 +59,9 @@ export default function AdminDashboard({ user }) {
       if (settingsRes.data.settings) {
         setRateSettings(settingsRes.data.settings);
       }
+
+      const unverifiedRes = await adminAPI.getUnverifiedUsers();
+      setUnverifiedUsers(unverifiedRes.data.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -66,6 +72,27 @@ export default function AdminDashboard({ user }) {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleApproveUserAccount = async (targetUserId) => {
+    try {
+      await adminAPI.verifyUser(targetUserId);
+      alert('✓ User account approved and activated successfully!');
+      fetchData();
+    } catch (err) {
+      alert('Failed to approve user account.');
+    }
+  };
+
+  const handleRejectUserAccount = async (targetUserId) => {
+    if (!window.confirm('Are you sure you want to reject and remove this account registration?')) return;
+    try {
+      await adminAPI.rejectUser(targetUserId);
+      alert('✓ User account registration rejected.');
+      fetchData();
+    } catch (err) {
+      alert('Failed to reject user account.');
+    }
+  };
 
   const handleOpenVerifyPassModal = (reqCode = '') => {
     setInputPassCode(reqCode);
@@ -151,12 +178,17 @@ export default function AdminDashboard({ user }) {
         <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Hospital Sultan Zainal Abidin (HoSZA) Admin & Ward Staff Portal</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Nurse Entry Pass Verification & Unaccompanied Patient On-Behalf Module
+            Nurse Entry Pass Verification, Account Approval & Unaccompanied Patient On-Behalf Module
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {unverifiedUsers.length > 0 && (
+            <button onClick={() => setShowUnverifiedModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #ec4899, #be185d)', fontWeight: '800' }}>
+              🔔 Account Approvals ({unverifiedUsers.length})
+            </button>
+          )}
           <button onClick={() => handleOpenVerifyPassModal('')} className="btn btn-primary" style={{ background: 'linear-gradient(135deg, #059669, #0284c7)' }}>
-            📷 Scan / Verify Ward E-Pass
+            📷 Scan / Verify E-Pass
           </button>
           <button onClick={() => setShowSettingsModal(true)} className="btn btn-secondary" style={{ border: '1px solid #34d399', color: '#34d399' }}>
             ⚙️ Payment Rates
@@ -208,10 +240,10 @@ export default function AdminDashboard({ user }) {
         </div>
 
         <div className="glass-panel stat-card">
-          <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>🏥</div>
+          <div className="stat-icon" style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#ec4899' }}>🔔</div>
           <div>
-            <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{stats.on_behalf_count}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Unaccompanied Cases</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{unverifiedUsers.length}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Pending Account Approvals</div>
           </div>
         </div>
       </div>
@@ -284,6 +316,69 @@ export default function AdminDashboard({ user }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal Pending Account Approvals */}
+      {showUnverifiedModal && (
+        <div className="modal-overlay">
+          <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '650px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '800' }}>🔔 Pending Account Registration Approvals</h3>
+                <p style={{ fontSize: '0.8rem', color: '#f59e0b' }}>Review and verify newly registered user accounts before granting login access</p>
+              </div>
+              <button onClick={() => setShowUnverifiedModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+            </div>
+
+            {unverifiedUsers.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                No pending user accounts awaiting verification. All accounts are approved!
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {unverifiedUsers.map((acc) => (
+                  <div key={acc.id} className="glass-panel" style={{ padding: '1.25rem', background: 'rgba(15, 23, 42, 0.6)', borderLeft: '4px solid #f59e0b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.35rem' }}>
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: '800' }}>{acc.name}</h4>
+                          <span className="badge" style={{ background: acc.role === 'companion' ? 'rgba(5, 150, 105, 0.3)' : acc.role === 'staff' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(2, 132, 199, 0.3)', color: acc.role === 'companion' ? '#34d399' : acc.role === 'staff' ? '#f59e0b' : '#38bdf8' }}>
+                            {acc.role.toUpperCase()}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                          <p>🪪 MyKad IC: <strong>{acc.ic_number}</strong> ({acc.gender === 'L' ? 'Male' : 'Female'})</p>
+                          <p>📧 Email: <strong>{acc.email}</strong> | 📱 Phone: <strong>{acc.phone}</strong></p>
+                          {acc.companion_profile?.student_staff_id && (
+                            <p>🎓 UniSZA ID: <strong>{acc.companion_profile.student_staff_id}</strong></p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => handleApproveUserAccount(acc.id)}
+                          className="btn btn-primary"
+                          style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', background: 'linear-gradient(135deg, #059669, #0284c7)' }}
+                        >
+                          ✓ Approve Account
+                        </button>
+                        <button
+                          onClick={() => handleRejectUserAccount(acc.id)}
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', border: '1px solid #f43f5e', color: '#fda4af' }}
+                        >
+                          ❌ Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -619,7 +714,7 @@ export default function AdminDashboard({ user }) {
                 />
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', background: 'gradient(135deg, #f59e0b, #d97706)' }}>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
                 Publish Ward Request
               </button>
             </form>

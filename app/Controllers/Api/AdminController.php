@@ -95,7 +95,9 @@ class AdminController extends ResourceController
      */
     public function verifyPass()
     {
-        $passCode = trim($this->request->getVar('pass_code'));
+        $passCode    = trim($this->request->getVar('pass_code'));
+        $staffUserId = $this->request->getVar('staff_user_id');
+
         if (empty($passCode)) {
             return $this->failValidationError('Pass code or QR token is required.');
         }
@@ -131,15 +133,52 @@ class AdminController extends ResourceController
         }
 
         $dutyLog = $dutyLogModel->where('request_id', $requestData['id'])->orderBy('id', 'DESC')->first();
+        $alreadyScanned = false;
+        $previousScanInfo = null;
+
+        if ($dutyLog && !empty($dutyLog['is_pass_scanned']) && intval($dutyLog['is_pass_scanned']) === 1) {
+            $alreadyScanned = true;
+            $scannedByStaff = null;
+            if (!empty($dutyLog['scanned_by_user_id'])) {
+                $scannedByStaff = $userModel->find($dutyLog['scanned_by_user_id']);
+            }
+            $previousScanInfo = [
+                'scanned_at'      => date('d/m/Y h:i A', strtotime($dutyLog['scanned_at'])),
+                'scanned_by_name' => $scannedByStaff ? $scannedByStaff['name'] : 'HoSZA Ward Nurse/Staff'
+            ];
+        } else {
+            // Record first-time pass scan
+            $nowTime = date('Y-m-d H:i:s');
+            if ($dutyLog) {
+                $dutyLogModel->update($dutyLog['id'], [
+                    'is_pass_scanned'    => 1,
+                    'scanned_at'         => $nowTime,
+                    'scanned_by_user_id' => $staffUserId
+                ]);
+            } else {
+                $dutyLogModel->insert([
+                    'request_id'         => $requestData['id'],
+                    'companion_id'       => $requestData['assigned_companion_id'],
+                    'is_pass_scanned'    => 1,
+                    'scanned_at'         => $nowTime,
+                    'scanned_by_user_id' => $staffUserId,
+                    'qr_token'           => 'PAS-HOSZA-' . strtoupper(substr(md5(uniqid()), 0, 10))
+                ]);
+            }
+        }
 
         return $this->respond([
-            'status'      => 200,
-            'is_valid'    => true,
-            'request'     => $requestData,
-            'companion'   => $companion,
-            'duty_log'    => $dutyLog,
-            'verified_at' => date('d/m/Y H:i:s'),
-            'message'     => 'VALID WARD ENTRY PASS: Companion authorization confirmed for HoSZA Ward.'
+            'status'             => 200,
+            'is_valid'           => true,
+            'already_scanned'    => $alreadyScanned,
+            'previous_scan_info' => $previousScanInfo,
+            'request'            => $requestData,
+            'companion'          => $companion,
+            'duty_log'           => $dutyLog,
+            'verified_at'        => date('d/m/Y H:i:s'),
+            'message'            => $alreadyScanned
+                ? '⚠️ AMARAN: PAS INI TELAH DIIMBAS SEBELUM INI!'
+                : '✅ PAS SAH & DILULUSKAN: Kehadiran Peneman disahkan ke Wad HoSZA.'
         ]);
     }
 }

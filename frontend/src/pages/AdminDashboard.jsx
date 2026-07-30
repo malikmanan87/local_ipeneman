@@ -79,7 +79,7 @@ export default function AdminDashboard({ user }) {
     setVerifying(true);
     setVerificationResult(null);
     try {
-      const res = await adminAPI.verifyPass(inputPassCode.trim());
+      const res = await adminAPI.verifyPass(inputPassCode.trim(), user.id);
       setVerificationResult(res.data);
     } catch (err) {
       setVerificationResult({
@@ -322,27 +322,58 @@ export default function AdminDashboard({ user }) {
             {verificationResult && (
               <div>
                 {verificationResult.is_valid ? (
-                  <div style={{ background: 'rgba(5, 150, 105, 0.25)', border: '2px solid #34d399', borderRadius: '12px', padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#34d399', fontWeight: '800', fontSize: '1.1rem', marginBottom: '0.75rem' }}>
-                      ✓ VALID DIGITAL WARD ENTRY PASS (HOSZA)
-                    </div>
+                  verificationResult.already_scanned ? (
+                    /* DUPLICATE SCAN ALERT */
+                    <div style={{ background: 'rgba(245, 158, 11, 0.25)', border: '2px solid #f59e0b', borderRadius: '12px', padding: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                        <div style={{ color: '#f59e0b', fontWeight: '800', fontSize: '1.1rem' }}>
+                          ⚠️ AMARAN: PAS INI TELAH DIIMBAS SEBELUM INI!
+                        </div>
+                        <span className="badge" style={{ background: '#f59e0b', color: '#0f172a', fontWeight: '800' }}>
+                          DUPLICATE SCAN
+                        </span>
+                      </div>
 
-                    <div style={{ fontSize: '0.85rem', lineHeight: '1.6', color: '#e2e8f0' }}>
-                      <p>👨‍🦱 <strong>Companion Name:</strong> {verificationResult.companion?.name}</p>
-                      <p>🪪 <strong>IC / MyKad:</strong> {verificationResult.companion?.ic_number}</p>
-                      <p>📱 <strong>Phone:</strong> {verificationResult.companion?.phone}</p>
-                      <p>🎓 <strong>UniSZA ID:</strong> {verificationResult.companion?.profile?.student_staff_id || 'N/A'}</p>
-                      <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '0.5rem 0' }} />
-                      <p>🏥 <strong>Authorized Ward:</strong> {verificationResult.request?.ward_name} ({verificationResult.request?.bed_number})</p>
-                      <p>👴 <strong>Patient Name (RN):</strong> {verificationResult.request?.patient_name} ({verificationResult.request?.patient_rn})</p>
-                      <p>⏰ <strong>Shift Hours:</strong> {verificationResult.request?.shift_date} ({verificationResult.request?.start_time} - {verificationResult.request?.end_time})</p>
-                      <p style={{ color: '#38bdf8' }}>🔒 <strong>Safety Filter:</strong> {verificationResult.request?.patient_gender === 'L' ? 'Male Companion for Male Patient (Verified)' : 'Female Companion for Female Patient (Verified)'}</p>
-                    </div>
+                      <div style={{ background: 'rgba(15, 23, 42, 0.7)', padding: '0.75rem', borderRadius: '8px', marginBottom: '0.75rem', fontSize: '0.825rem' }}>
+                        <p style={{ color: '#f59e0b', fontWeight: '700' }}>
+                          🕒 Imbasan Pertama Pada: {verificationResult.previous_scan_info?.scanned_at}
+                        </p>
+                        <p style={{ color: '#e2e8f0' }}>
+                          👤 Diimbas Oleh: <strong>{verificationResult.previous_scan_info?.scanned_by_name}</strong>
+                        </p>
+                      </div>
 
-                    <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-                      Verified At: {verificationResult.verified_at}
+                      <div style={{ fontSize: '0.85rem', lineHeight: '1.6', color: '#e2e8f0' }}>
+                        <p>👨‍🦱 <strong>Companion Name:</strong> {verificationResult.companion?.name}</p>
+                        <p>🪪 <strong>IC / MyKad:</strong> {verificationResult.companion?.ic_number}</p>
+                        <p>🏥 <strong>Authorized Ward:</strong> {verificationResult.request?.ward_name} ({verificationResult.request?.bed_number})</p>
+                        <p>👴 <strong>Patient Name (RN):</strong> {verificationResult.request?.patient_name} ({verificationResult.request?.patient_rn})</p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* FIRST TIME SCAN SUCCESS */
+                    <div style={{ background: 'rgba(5, 150, 105, 0.25)', border: '2px solid #34d399', borderRadius: '12px', padding: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#34d399', fontWeight: '800', fontSize: '1.1rem', marginBottom: '0.75rem' }}>
+                        ✓ VALID DIGITAL WARD ENTRY PASS (HOSZA)
+                      </div>
+
+                      <div style={{ fontSize: '0.85rem', lineHeight: '1.6', color: '#e2e8f0' }}>
+                        <p>👨‍🦱 <strong>Companion Name:</strong> {verificationResult.companion?.name}</p>
+                        <p>🪪 <strong>IC / MyKad:</strong> {verificationResult.companion?.ic_number}</p>
+                        <p>📱 <strong>Phone:</strong> {verificationResult.companion?.phone}</p>
+                        <p>🎓 <strong>UniSZA ID:</strong> {verificationResult.companion?.profile?.student_staff_id || 'N/A'}</p>
+                        <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '0.5rem 0' }} />
+                        <p>🏥 <strong>Authorized Ward:</strong> {verificationResult.request?.ward_name} ({verificationResult.request?.bed_number})</p>
+                        <p>👴 <strong>Patient Name (RN):</strong> {verificationResult.request?.patient_name} ({verificationResult.request?.patient_rn})</p>
+                        <p>⏰ <strong>Shift Hours:</strong> {verificationResult.request?.shift_date} ({verificationResult.request?.start_time} - {verificationResult.request?.end_time})</p>
+                        <p style={{ color: '#38bdf8' }}>🔒 <strong>Safety Filter:</strong> {verificationResult.request?.patient_gender === 'L' ? 'Male Companion for Male Patient (Verified)' : 'Female Companion for Female Patient (Verified)'}</p>
+                      </div>
+
+                      <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                        Verified At: {verificationResult.verified_at}
+                      </div>
+                    </div>
+                  )
                 ) : (
                   <div style={{ background: 'rgba(225, 29, 72, 0.25)', border: '2px solid #f43f5e', borderRadius: '12px', padding: '1.25rem', color: '#fda4af' }}>
                     <div style={{ fontWeight: '800', fontSize: '1.1rem', marginBottom: '0.5rem' }}>

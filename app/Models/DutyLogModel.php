@@ -16,7 +16,10 @@ class DutyLogModel extends Model
         'check_in',
         'check_out',
         'care_notes',
-        'qr_token'
+        'qr_token',
+        'is_pass_scanned',
+        'scanned_at',
+        'scanned_by_user_id'
     ];
 
     protected $useTimestamps = true;

@@ -41,7 +41,7 @@ export const adminAPI = {
   getAllRequests: () => api.get('/admin/requests'),
   getSettings: () => api.get('/admin/settings'),
   updateSettings: (data) => api.post('/admin/settings/update', data),
-  verifyPass: (passCode) => api.post('/admin/verify-pass', { pass_code: passCode }),
+  verifyPass: (passCode, staffUserId) => api.post('/admin/verify-pass', { pass_code: passCode, staff_user_id: staffUserId }),
 };
 
 export default api;

@@ -66,6 +66,67 @@ class RequestController extends ResourceController
     }
 
     /**
+     * Update an open request before companion application / assignment
+     */
+    public function update($id = null)
+    {
+        $requestModel = new RequestModel();
+        $requestData  = $requestModel->find($id);
+
+        if (!$requestData) {
+            return $this->failNotFound('Request not found.');
+        }
+
+        // Check if request is still open and unassigned
+        if ($requestData['status'] !== 'open' || !empty($requestData['assigned_companion_id'])) {
+            return $this->failForbidden('Cannot update request once it is assigned or in progress.');
+        }
+
+        // Also check if any companions have already applied
+        $appModel = new ApplicationModel();
+        $existingApps = $appModel->where('request_id', $id)->countAllResults();
+        if ($existingApps > 0) {
+            return $this->failForbidden('Cannot update request because companions have already applied.');
+        }
+
+        $rules = [
+            'patient_name'   => 'required',
+            'patient_gender' => 'required|in_list[L,P]',
+            'ward_name'      => 'required',
+            'bed_number'     => 'required',
+            'shift_date'     => 'required|valid_date',
+            'start_time'     => 'required',
+            'end_time'       => 'required',
+            'task_details'   => 'required',
+        ];
+
+        if (!$this->validate($rules)) {
+            return $this->fail($this->validator->getErrors());
+        }
+
+        $updateData = [
+            'patient_name'     => $this->request->getVar('patient_name'),
+            'patient_rn'       => $this->request->getVar('patient_rn') ?? $requestData['patient_rn'],
+            'patient_gender'   => $this->request->getVar('patient_gender'),
+            'patient_age'      => $this->request->getVar('patient_age') ?? $requestData['patient_age'],
+            'ward_name'        => $this->request->getVar('ward_name'),
+            'bed_number'       => $this->request->getVar('bed_number'),
+            'shift_date'       => $this->request->getVar('shift_date'),
+            'start_time'       => $this->request->getVar('start_time'),
+            'end_time'         => $this->request->getVar('end_time'),
+            'task_details'     => $this->request->getVar('task_details'),
+            'allowance_amount' => $this->request->getVar('allowance_amount') ?? $requestData['allowance_amount'],
+        ];
+
+        $requestModel->update($id, $updateData);
+
+        return $this->respond([
+            'status'  => 200,
+            'message' => 'Request updated successfully.'
+        ]);
+    }
+
+    /**
      * Get available jobs for companions
      * CRITICAL SAFETY RULE: Filter strictly by Companion's Gender!
      */
@@ -101,6 +162,12 @@ class RequestController extends ResourceController
         $requests = $requestModel->where('created_by_user_id', $userId)
                                  ->orderBy('id', 'DESC')
                                  ->findAll();
+
+        // Include application count for each request to inform frontend if editable
+        $appModel = new ApplicationModel();
+        foreach ($requests as &$req) {
+            $req['application_count'] = $appModel->where('request_id', $req['id'])->countAllResults();
+        }
 
         return $this->respond($requests);
     }

@@ -18,6 +18,7 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($
 
     // Request Routes (Waris & Admin On-Behalf)
     $routes->post('requests/create', 'RequestController::create');
+    $routes->post('requests/update/(:num)', 'RequestController::update/$1');
     $routes->get('requests/available', 'RequestController::availableJobs');
     $routes->get('requests/my/(:num)', 'RequestController::myRequests/$1');
     $routes->post('requests/accept-companion', 'RequestController::acceptCompanion');

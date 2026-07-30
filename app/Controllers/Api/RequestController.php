@@ -6,6 +6,7 @@ use CodeIgniter\RESTful\ResourceController;
 use App\Models\RequestModel;
 use App\Models\UserModel;
 use App\Models\ApplicationModel;
+use App\Models\SettingModel;
 
 class RequestController extends ResourceController
 {
@@ -35,6 +36,24 @@ class RequestController extends ResourceController
 
         $requestCode = 'IPENEMAN-' . date('Ymd') . '-' . rand(1000, 9999);
 
+        // Calculate base allowance from Admin rate if needed or use passed allowance
+        $settingModel = new SettingModel();
+        $defaultHourlyRate = floatval($settingModel->getVal('default_hourly_rate', '10.00'));
+
+        $startTime = $this->request->getVar('start_time');
+        $endTime   = $this->request->getVar('end_time');
+
+        // Calculate hours
+        $start = strtotime($startTime);
+        $end   = strtotime($endTime);
+        $hours = ($end > $start) ? ($end - $start) / 3600 : 4; // default 4 hrs if calculation issue
+
+        $baseAllowance = $this->request->getVar('allowance_amount') 
+            ? floatval($this->request->getVar('allowance_amount'))
+            : round($hours * $defaultHourlyRate, 2);
+
+        $tipAmount = $this->request->getVar('tip_amount') ? floatval($this->request->getVar('tip_amount')) : 0.00;
+
         $requestModel = new RequestModel();
         $data = [
             'request_code'       => $requestCode,
@@ -47,11 +66,12 @@ class RequestController extends ResourceController
             'ward_name'          => $this->request->getVar('ward_name'),
             'bed_number'         => $this->request->getVar('bed_number'),
             'shift_date'         => $this->request->getVar('shift_date'),
-            'start_time'         => $this->request->getVar('start_time'),
-            'end_time'           => $this->request->getVar('end_time'),
+            'start_time'         => $startTime,
+            'end_time'           => $endTime,
             'task_details'       => $this->request->getVar('task_details'),
             'allowance_type'     => $this->request->getVar('allowance_type') ?? 'paid',
-            'allowance_amount'   => $this->request->getVar('allowance_amount') ?? 50.00,
+            'allowance_amount'   => $baseAllowance,
+            'tip_amount'         => $tipAmount,
             'status'             => 'open'
         ];
 
@@ -104,6 +124,10 @@ class RequestController extends ResourceController
             return $this->fail($this->validator->getErrors());
         }
 
+        $tipAmount = $this->request->getVar('tip_amount') !== null 
+            ? floatval($this->request->getVar('tip_amount')) 
+            : floatval($requestData['tip_amount']);
+
         $updateData = [
             'patient_name'     => $this->request->getVar('patient_name'),
             'patient_rn'       => $this->request->getVar('patient_rn') ?? $requestData['patient_rn'],
@@ -116,6 +140,7 @@ class RequestController extends ResourceController
             'end_time'         => $this->request->getVar('end_time'),
             'task_details'     => $this->request->getVar('task_details'),
             'allowance_amount' => $this->request->getVar('allowance_amount') ?? $requestData['allowance_amount'],
+            'tip_amount'       => $tipAmount,
         ];
 
         $requestModel->update($id, $updateData);

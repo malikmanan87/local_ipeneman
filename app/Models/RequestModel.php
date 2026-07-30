@@ -26,6 +26,7 @@ class RequestModel extends Model
         'task_details',
         'allowance_type',
         'allowance_amount',
+        'tip_amount',
         'status',
         'assigned_companion_id'
     ];

@@ -199,9 +199,16 @@ export default function CompanionDashboard({ user }) {
                   <span className={`badge ${job.patient_gender === 'L' ? 'badge-male' : 'badge-female'}`}>
                     Patient: {job.patient_gender === 'L' ? 'Male' : 'Female'}
                   </span>
-                  <span style={{ fontSize: '1rem', fontWeight: '800', color: '#34d399' }}>
-                    RM {parseFloat(job.allowance_amount).toFixed(2)}
-                  </span>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>
+                      RM {(parseFloat(job.allowance_amount || 0) + parseFloat(job.tip_amount || 0)).toFixed(2)}
+                    </div>
+                    {parseFloat(job.tip_amount) > 0 && (
+                      <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: '600' }}>
+                        🎁 Incl. RM {parseFloat(job.tip_amount).toFixed(2)} tip
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <h4 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.5rem' }}>
@@ -211,6 +218,7 @@ export default function CompanionDashboard({ user }) {
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                   <p>🗓️ <strong>Date:</strong> {job.shift_date}</p>
                   <p>⏰ <strong>Time:</strong> {job.start_time} - {job.end_time}</p>
+                  <p>💵 <strong>Allowance:</strong> RM {parseFloat(job.allowance_amount || 0).toFixed(2)} {parseFloat(job.tip_amount) > 0 ? `+ RM ${parseFloat(job.tip_amount).toFixed(2)} tip` : ''}</p>
                   <p>👴 <strong>Patient:</strong> Age ~{job.patient_age} yrs</p>
                   <p>📌 <strong>Tasks:</strong> {job.task_details}</p>
                 </div>

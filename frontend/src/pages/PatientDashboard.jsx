@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { requestAPI } from '../services/api';
+import { requestAPI, adminAPI } from '../services/api';
 
 export default function PatientDashboard({ user }) {
   const [myRequests, setMyRequests] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [adminHourlyRate, setAdminHourlyRate] = useState(10.00);
 
   const initialFormState = {
     created_by_user_id: user.id,
@@ -20,7 +21,8 @@ export default function PatientDashboard({ user }) {
     start_time: '14:00',
     end_time: '20:00',
     task_details: 'Assist patient with conversation, guide to restroom & assist with meals.',
-    allowance_amount: 60.00
+    allowance_amount: 60.00,
+    tip_amount: 0.00
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -30,6 +32,11 @@ export default function PatientDashboard({ user }) {
     try {
       const res = await requestAPI.getMyRequests(user.id);
       setMyRequests(res.data || []);
+
+      const settingsRes = await adminAPI.getSettings();
+      if (settingsRes.data.settings?.default_hourly_rate) {
+        setAdminHourlyRate(parseFloat(settingsRes.data.settings.default_hourly_rate));
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,12 +48,29 @@ export default function PatientDashboard({ user }) {
     fetchMyRequests();
   }, [user]);
 
+  // Helper to calculate shift duration hours
+  const calculateShiftHours = (start, end) => {
+    if (!start || !end) return 6;
+    const [sH, sM] = start.split(':').map(Number);
+    const [eH, eM] = end.split(':').map(Number);
+    let diff = (eH + eM/60) - (sH + sM/60);
+    if (diff < 0) diff += 24;
+    return diff > 0 ? diff : 6;
+  };
+
+  const currentHours = calculateShiftHours(formData.start_time, formData.end_time);
+  const calculatedBaseAllowance = (currentHours * adminHourlyRate).toFixed(2);
+  const totalAllowanceAmount = (parseFloat(calculatedBaseAllowance) + parseFloat(formData.tip_amount || 0)).toFixed(2);
+
   const handleOpenCreateModal = () => {
     setEditingId(null);
+    const defaultHours = calculateShiftHours('14:00', '20:00');
     setFormData({
       ...initialFormState,
       created_by_user_id: user.id,
-      patient_gender: user.gender || 'L'
+      patient_gender: user.gender || 'L',
+      allowance_amount: defaultHours * adminHourlyRate,
+      tip_amount: 0.00
     });
     setShowModal(true);
   };
@@ -66,19 +90,26 @@ export default function PatientDashboard({ user }) {
       start_time: req.start_time || '14:00',
       end_time: req.end_time || '20:00',
       task_details: req.task_details || '',
-      allowance_amount: parseFloat(req.allowance_amount) || 50.00
+      allowance_amount: parseFloat(req.allowance_amount) || (6 * adminHourlyRate),
+      tip_amount: parseFloat(req.tip_amount) || 0.00
     });
     setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const payload = {
+      ...formData,
+      allowance_amount: calculatedBaseAllowance,
+      tip_amount: formData.tip_amount || 0.00
+    };
+
     try {
       if (editingId) {
-        await requestAPI.update(editingId, formData);
+        await requestAPI.update(editingId, payload);
         alert('✓ Companion request updated successfully!');
       } else {
-        await requestAPI.create(formData);
+        await requestAPI.create(payload);
         alert('✓ Patient companion request created successfully!');
       }
       setShowModal(false);
@@ -118,6 +149,9 @@ export default function PatientDashboard({ user }) {
         <div className="grid grid-2">
           {myRequests.map((req) => {
             const isEditable = req.status === 'open' && (!req.application_count || req.application_count === 0);
+            const baseAmt = parseFloat(req.allowance_amount || 0);
+            const tipAmt = parseFloat(req.tip_amount || 0);
+            const totalAmt = baseAmt + tipAmt;
 
             return (
               <div key={req.id} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -136,9 +170,17 @@ export default function PatientDashboard({ user }) {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
                     <strong>Date/Time:</strong> {req.shift_date} ({req.start_time} - {req.end_time})
                   </p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-                    <strong>Allowance:</strong> RM {parseFloat(req.allowance_amount).toFixed(2)}
-                  </p>
+                  
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem', background: 'rgba(15, 23, 42, 0.4)', padding: '0.5rem 0.75rem', borderRadius: '8px' }}>
+                    <div>🏥 <strong>Admin Standard Allowance:</strong> RM {baseAmt.toFixed(2)}</div>
+                    {tipAmt > 0 && (
+                      <div style={{ color: '#f59e0b' }}>🎁 <strong>Patient / Family Tip:</strong> + RM {tipAmt.toFixed(2)}</div>
+                    )}
+                    <div style={{ color: '#34d399', fontWeight: '700', marginTop: '0.2rem' }}>
+                      💵 <strong>Total Paid to Companion:</strong> RM {totalAmt.toFixed(2)}
+                    </div>
+                  </div>
+
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                     <strong>Task Details:</strong> {req.task_details}
                   </p>
@@ -265,33 +307,33 @@ export default function PatientDashboard({ user }) {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Companion Allowance (RM)</label>
-                <input
-                  type="number"
-                  step="5"
-                  className="form-input"
-                  value={formData.allowance_amount}
-                  onChange={(e) => setFormData({ ...formData, allowance_amount: parseFloat(e.target.value) })}
-                  required
-                />
-                {(() => {
-                  if (formData.start_time && formData.end_time) {
-                    const [sH, sM] = formData.start_time.split(':').map(Number);
-                    const [eH, eM] = formData.end_time.split(':').map(Number);
-                    let diffHours = (eH + eM/60) - (sH + sM/60);
-                    if (diffHours < 0) diffHours += 24;
-                    if (diffHours > 0) {
-                      const hourlyRate = (formData.allowance_amount / diffHours).toFixed(2);
-                      return (
-                        <div style={{ fontSize: '0.8rem', marginTop: '0.4rem', background: 'rgba(5, 150, 105, 0.15)', border: '1px solid rgba(5, 150, 105, 0.4)', padding: '0.4rem 0.75rem', borderRadius: '8px', color: '#34d399' }}>
-                          💡 <strong>Shift Duration:</strong> {diffHours.toFixed(1)} hours | <strong>Estimated Hourly Rate:</strong> RM {hourlyRate} / hr
-                        </div>
-                      );
-                    }
-                  }
-                  return null;
-                })()}
+              {/* Allowance & Tip Section */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.5)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', marginBottom: '0.5rem', color: '#38bdf8' }}>
+                  💵 Allowance & Optional Tip Breakdown
+                </h4>
+
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                  🏥 <strong>Hospital Admin Fixed Rate:</strong> RM {adminHourlyRate.toFixed(2)} / hour × {currentHours.toFixed(1)} hrs = <span style={{ color: '#34d399', fontWeight: '700' }}>RM {calculatedBaseAllowance}</span>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '0.5rem' }}>
+                  <label style={{ color: '#f59e0b' }}>🎁 Optional Patient / Family Tip (RM)</label>
+                  <input
+                    type="number"
+                    step="5"
+                    min="0"
+                    className="form-input"
+                    placeholder="e.g. 10.00 (Optional)"
+                    value={formData.tip_amount}
+                    onChange={(e) => setFormData({ ...formData, tip_amount: parseFloat(e.target.value) || 0 })}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Optional token of appreciation added directly to the companion</span>
+                </div>
+
+                <div style={{ fontSize: '0.9rem', fontWeight: '800', color: '#34d399', marginTop: '0.5rem', textAlign: 'right' }}>
+                  Total Paid to Companion: RM {totalAllowanceAmount}
+                </div>
               </div>
 
               <div className="form-group">

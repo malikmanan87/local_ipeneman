@@ -26,7 +26,7 @@ export default function CompanionDashboard({ user }) {
   const [activeDutyForPass, setActiveDutyForPass] = useState(null);
   const [careNoteText, setCareNoteText] = useState({});
   const [activeTab, setActiveTab] = useState('duties');
-  const [dutyFilter, setDutyFilter] = useState('all'); // 'all' | 'active' | 'completed'
+  const [dutyFilter, setDutyFilter] = useState('active'); // Priority: 'active' 1st, then 'completed' or 'all'
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [selectedClaimDuty, setSelectedClaimDuty] = useState(null);
 
@@ -129,12 +129,12 @@ export default function CompanionDashboard({ user }) {
           </div>
         </div>
 
-        {/* ── Stat Cards ── */}
+        {/* ── Stat Cards (Priority: Active Duties 1st, Open Opportunities 2nd, Completed Shifts 3rd) ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.1rem', marginBottom: '1.75rem' }}>
           {[
             { label: 'Active Duties', value: activeDuties.length, icon: '🔄', color: '#a78bfa', tab: 'duties', filter: 'active' },
-            { label: 'Completed Shifts', value: completedDuties.length, icon: '✅', color: '#34d399', tab: 'duties', filter: 'completed' },
             { label: 'Open Opportunities', value: availableJobs.length, icon: '🔍', color: '#38bdf8', tab: 'jobs' },
+            { label: 'Completed Shifts', value: completedDuties.length, icon: '✅', color: '#34d399', tab: 'duties', filter: 'completed' },
             { label: 'Rating Score', value: `${parseFloat(ratingsData.rating_avg || 5.0).toFixed(1)}★`, icon: '⭐', color: '#f59e0b', tab: 'ratings' },
           ].map(s => (
             <div
@@ -170,12 +170,12 @@ export default function CompanionDashboard({ user }) {
             <div className="animate-fade-in">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 My Companion Duties</h2>
-                {/* Status Filter Pills */}
+                {/* Status Filter Pills (Priority: Active 1st) */}
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   {[
-                    { key: 'all',       label: 'All Duties',     count: myDuties.length },
                     { key: 'active',    label: 'Active Duties',  count: activeDuties.length },
                     { key: 'completed', label: 'Completed',      count: completedDuties.length },
+                    { key: 'all',       label: 'All Duties',     count: myDuties.length },
                   ].map(f => (
                     <button
                       key={f.key}

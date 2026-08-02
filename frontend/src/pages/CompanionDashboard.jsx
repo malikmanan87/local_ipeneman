@@ -38,9 +38,33 @@ export default function CompanionDashboard({ user }) {
         companionAPI.getMyDuties(user.id),
         companionAPI.getRatings(user.id),
       ]);
-      setAvailableJobs(jobsRes.data.data || []);
-      setMyDuties(dutiesRes.data || []);
+
+      const jobsList   = jobsRes.data.data || [];
+      const dutiesList = dutiesRes.data || [];
+
+      setAvailableJobs(jobsList);
+      setMyDuties(dutiesList);
       if (ratingsRes.data) setRatingsData(ratingsRes.data);
+
+      // Smart Priority Auto-Selection:
+      // 1st Priority: Active Duties (assigned / in_progress)
+      // 2nd Priority: Open Opportunities (available ward jobs matching gender)
+      // 3rd Priority: Completed Shifts
+      const activeCount    = dutiesList.filter(d => d.status === 'assigned' || d.status === 'in_progress').length;
+      const completedCount = dutiesList.filter(d => d.status === 'completed').length;
+
+      if (activeCount > 0) {
+        setActiveTab('duties');
+        setDutyFilter('active');
+      } else if (jobsList.length > 0) {
+        setActiveTab('jobs');
+      } else if (completedCount > 0) {
+        setActiveTab('duties');
+        setDutyFilter('completed');
+      } else {
+        setActiveTab('duties');
+        setDutyFilter('all');
+      }
     } catch (err) {
       console.error('Error fetching companion data:', err);
     } finally {

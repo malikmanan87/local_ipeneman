@@ -342,11 +342,11 @@ export default function AdminDashboard({ user }) {
               onClick={() => setActiveTab('approvals')}
               style={{ cursor: 'pointer', paddingRight: '0.5rem', position: 'relative' }}
             >
-              {stats.pending_approvals > 0 && (
+              {unverifiedUsers.length > 0 && (
                 <span style={{ position: 'absolute', top: 0, right: '0.2rem', width: '8px', height: '8px', borderRadius: '50%', background: '#f472b6', boxShadow: '0 0 8px #f472b6' }} />
               )}
               <div style={{ fontSize: '1.6rem', marginBottom: '0.65rem' }}>🔔</div>
-              <div style={{ fontSize: '1.9rem', fontWeight: '800', color: '#f472b6', lineHeight: 1 }}>{stats.pending_approvals}</div>
+              <div style={{ fontSize: '1.9rem', fontWeight: '800', color: '#f472b6', lineHeight: 1 }}>{unverifiedUsers.length}</div>
               <div style={{ fontSize: '0.88rem', fontWeight: '700', color: activeTab === 'approvals' ? '#f472b6' : '#f1f5f9', marginTop: '0.3rem' }}>Pending Approvals</div>
               <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Review accounts</div>
             </div>
@@ -357,9 +357,11 @@ export default function AdminDashboard({ user }) {
               style={{ cursor: 'pointer', borderLeft: '1px solid rgba(255,255,255,0.12)', paddingLeft: '1rem' }}
             >
               <div style={{ fontSize: '1.6rem', marginBottom: '0.65rem' }}>👥</div>
-              <div style={{ fontSize: '1.9rem', fontWeight: '800', color: '#38bdf8', lineHeight: 1 }}>{stats.total_users}</div>
+              <div style={{ fontSize: '1.9rem', fontWeight: '800', color: '#38bdf8', lineHeight: 1 }}>{userCounts.all}</div>
               <div style={{ fontSize: '0.88rem', fontWeight: '700', color: activeTab === 'users' ? '#38bdf8' : '#f1f5f9', marginTop: '0.3rem' }}>Total Users</div>
-              <div style={{ fontSize: '0.73rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{stats.total_companions} comp · {stats.total_families} fam</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem', lineHeight: '1.35' }}>
+                {userCounts.companion} Peneman · {userCounts.user} Waris · {userCounts.staff} Staf · {userCounts.admin} Admin
+              </div>
             </div>
           </div>
         </div>

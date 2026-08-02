@@ -198,17 +198,44 @@ class RequestController extends ResourceController
     public function myRequests($userId = null)
     {
         $requestModel = new RequestModel();
+        $dutyLogModel = new \App\Models\DutyLogModel();
+        $userModel    = new UserModel();
+        $appModel     = new ApplicationModel();
+        $ratingModel  = new RatingModel();
+
         $requests = $requestModel->where('created_by_user_id', $userId)
                                  ->orderBy('id', 'DESC')
                                  ->findAll();
 
-        // Include application count & rating for each request
-        $appModel    = new ApplicationModel();
-        $ratingModel = new RatingModel();
+        // Include application count, duty_log (care notes), companion & rating for each request
         foreach ($requests as &$req) {
             $req['application_count'] = $appModel->where('request_id', $req['id'])->countAllResults();
             $existingRating = $ratingModel->where('request_id', $req['id'])->first();
             $req['user_rating'] = $existingRating;
+
+            // Include companion info if assigned
+            if (!empty($req['assigned_companion_id'])) {
+                $comp = $userModel->find($req['assigned_companion_id']);
+                $req['companion'] = $comp ?: null;
+            } else {
+                $req['companion'] = null;
+            }
+
+            // Include duty log & care notes
+            $dutyLog = $dutyLogModel->where('request_id', $req['id'])->orderBy('id', 'DESC')->first();
+            if ($dutyLog) {
+                $parsedNotes = [];
+                if (!empty($dutyLog['care_notes'])) {
+                    $parsed = json_decode($dutyLog['care_notes'], true);
+                    if (is_array($parsed)) {
+                        $parsedNotes = $parsed;
+                    }
+                }
+                $dutyLog['care_notes_list'] = $parsedNotes;
+                $req['duty_log'] = $dutyLog;
+            } else {
+                $req['duty_log'] = null;
+            }
         }
 
         return $this->respond($requests);

@@ -23,7 +23,8 @@ class AdminController extends ResourceController
         $totalUsers       = $userModel->countAllResults(false);
         $totalCompanions  = $userModel->where('role', 'companion')->countAllResults(false);
         $totalFamilies    = $userModel->where('role', 'user')->countAllResults(false);
-        $totalStaff       = $userModel->whereIn('role', ['staff', 'admin'])->countAllResults(false);
+        $totalStaff       = $userModel->where('role', 'staff')->countAllResults(false);
+        $totalAdmins      = $userModel->where('role', 'admin')->countAllResults(false);
         $pendingApprovals = $userModel->where('is_verified', 0)->countAllResults(false);
 
         $totalRequests = $requestModel->countAllResults(false);
@@ -55,6 +56,7 @@ class AdminController extends ResourceController
                 'total_companions'       => $totalCompanions,
                 'total_families'         => $totalFamilies,
                 'total_staff'            => $totalStaff,
+                'total_admins'           => $totalAdmins,
                 'pending_approvals'      => $pendingApprovals,
                 'total_requests'         => $totalRequests,
                 'active_duties'          => $activeDuties,

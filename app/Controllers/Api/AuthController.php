@@ -77,6 +77,10 @@ class AuthController extends ResourceController
             return $this->failUnauthorized('Invalid email or password.');
         }
 
+        if (isset($user['status']) && $user['status'] === 'inactive') {
+            return $this->failForbidden('ACCOUNT INACTIVE: Your account has been deactivated by HoSZA Admin. Please contact system support for assistance.');
+        }
+
         if (empty($user['is_verified']) || intval($user['is_verified']) === 0) {
             return $this->failForbidden('ACCOUNT PENDING VERIFICATION: Your account is pending verification and approval by HoSZA Admin. Please wait for Admin activation.');
         }

@@ -28,6 +28,7 @@ class RequestModel extends Model
         'allowance_amount',
         'tip_amount',
         'status',
+        'cancellation_reason',
         'assigned_companion_id'
     ];
 

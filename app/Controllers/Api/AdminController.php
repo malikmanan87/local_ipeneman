@@ -238,6 +238,11 @@ class AdminController extends ResourceController
             return $this->failNotFound('INVALID PASS CODE: No ward request found for code "' . $passCode . '".');
         }
 
+        if ($requestData['status'] === 'cancelled') {
+            $reasonStr = !empty($requestData['cancellation_reason']) ? ' Reason: "' . $requestData['cancellation_reason'] . '"' : '';
+            return $this->failForbidden('CANCELLED PASS: Ward request has been cancelled by Admin.' . $reasonStr);
+        }
+
         if (empty($requestData['assigned_companion_id'])) {
             return $this->failForbidden('UNAUTHORIZED PASS: No companion has been assigned for this request yet.');
         }
@@ -388,6 +393,46 @@ class AdminController extends ResourceController
         return $this->respond([
             'status'  => 200,
             'message' => 'User account "' . $user['name'] . '" rejected and removed.'
+        ]);
+    }
+
+    /**
+     * Toggle active/inactive status for any user account in the system
+     */
+    public function toggleUserStatus()
+    {
+        $targetUserId = $this->request->getVar('user_id');
+        $newStatus    = $this->request->getVar('status'); // 'active' or 'inactive'
+
+        if (!$targetUserId) {
+            return $this->failValidationError('user_id is required.');
+        }
+
+        if (!in_array($newStatus, ['active', 'inactive'])) {
+            return $this->failValidationError('Status must be "active" or "inactive".');
+        }
+
+        $userModel = new UserModel();
+        $user      = $userModel->find($targetUserId);
+
+        if (!$user) {
+            return $this->failNotFound('User account not found.');
+        }
+
+        // Ensure status column exists in users table
+        $db = \Config\Database::connect();
+        try {
+            $db->query("ALTER TABLE users ADD COLUMN status VARCHAR(20) DEFAULT 'active' AFTER is_verified");
+        } catch (\Throwable $e) { /* Column already exists */ }
+
+        $userModel->update($targetUserId, ['status' => $newStatus]);
+
+        $statusLabel = $newStatus === 'active' ? 'activated (Active)' : 'deactivated (Inactive - Login Disabled)';
+
+        return $this->respond([
+            'status'     => 200,
+            'new_status' => $newStatus,
+            'message'    => 'User account "' . $user['name'] . '" ' . $statusLabel . '.'
         ]);
     }
 }

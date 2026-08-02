@@ -21,6 +21,7 @@ class UserModel extends Model
         'password',
         'role',
         'is_verified',
+        'status',
         'avatar'
     ];
 

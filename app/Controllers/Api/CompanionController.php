@@ -13,7 +13,9 @@ class CompanionController extends ResourceController
     protected $format = 'json';
 
     /**
-     * Apply for an open companion job
+     * Apply for an open companion job — FCFS Auto-Assign
+     * First qualified (same gender, verified, active) companion auto-assigned immediately.
+     * Records applied_at for 60-second withdraw window.
      */
     public function apply()
     {
@@ -30,14 +32,31 @@ class CompanionController extends ResourceController
             return $this->failNotFound('Request or Companion not found.');
         }
 
-        // Strict gender match verification
+        // Hard Rule: Must be same gender as patient
         if ($job['patient_gender'] !== $user['gender']) {
             return $this->failForbidden('Safety Error: Companion must be of the SAME GENDER as the patient.');
         }
 
-        // Schedule Overlap Conflict Protection:
-        // Check if companion already has an assigned or in_progress shift on the SAME DATE with overlapping hours
-        $requestModel = new RequestModel();
+        // Must be verified & active
+        if (intval($user['is_verified']) !== 1) {
+            return $this->failForbidden('Your account is not yet verified by Admin.');
+        }
+        if (isset($user['status']) && $user['status'] === 'inactive') {
+            return $this->failForbidden('Your account is inactive. Please contact Admin.');
+        }
+
+        // Request must still be open (not expired or already assigned)
+        if ($job['status'] !== 'open') {
+            return $this->failForbidden('This request is no longer open for applications.');
+        }
+
+        // Check shift has not yet expired (shift_date + end_time must be in future)
+        $shiftEndTs = strtotime($job['shift_date'] . ' ' . $job['end_time']);
+        if (time() >= $shiftEndTs) {
+            return $this->failForbidden('This shift has already expired (shift end time has passed).');
+        }
+
+        // Schedule Overlap Conflict Protection
         $myDuties = $requestModel->where('assigned_companion_id', $companionId)
                                  ->whereIn('status', ['assigned', 'in_progress'])
                                  ->where('shift_date', $job['shift_date'])
@@ -52,30 +71,125 @@ class CompanionController extends ResourceController
             if ($newEnd < $newStart) $newEnd += 86400;
             if ($dutyEnd < $dutyStart) $dutyEnd += 86400;
 
-            // Overlap condition: newStart < dutyEnd AND dutyStart < newEnd
             if ($newStart < $dutyEnd && $dutyStart < $newEnd) {
                 return $this->failForbidden('Schedule Conflict: You are already assigned to another ward duty during these hours (' . $duty['start_time'] . ' - ' . $duty['end_time'] . ').');
             }
         }
 
         $appModel = new ApplicationModel();
+
+        // Prevent duplicate application
         $existing = $appModel->where('request_id', $requestId)
                              ->where('companion_id', $companionId)
+                             ->whereNotIn('status', ['withdrawn'])
                              ->first();
 
         if ($existing) {
             return $this->fail('You have already applied for this duty request.');
         }
 
-        $appModel->insert([
+        // Ensure applied_at column exists
+        $db = \Config\Database::connect();
+        try {
+            $db->query("ALTER TABLE companion_applications ADD COLUMN applied_at DATETIME NULL AFTER status");
+        } catch (\Throwable $e) { /* Column already exists */ }
+        try {
+            $db->query("ALTER TABLE companion_applications ADD COLUMN withdrawn_at DATETIME NULL AFTER applied_at");
+        } catch (\Throwable $e) { /* Column already exists */ }
+
+        $appliedAt = date('Y-m-d H:i:s');
+
+        // FCFS Auto-Assign: Insert application + immediately assign if first applicant
+        $appId = $appModel->insert([
             'request_id'   => $requestId,
             'companion_id' => $companionId,
-            'status'       => 'pending'
+            'status'       => 'accepted',
+            'applied_at'   => $appliedAt
         ]);
 
+        // Auto-assign to request immediately
+        $requestModel->update($requestId, [
+            'status'                => 'assigned',
+            'assigned_companion_id' => $companionId
+        ]);
+
+        // Auto-reject any other pending applications by this companion for overlapping shifts
+        $otherApps = $appModel->where('companion_id', $companionId)
+                              ->where('status', 'pending')
+                              ->where('request_id !=', $requestId)
+                              ->findAll();
+
+        foreach ($otherApps as $otherApp) {
+            $otherJob = $requestModel->find($otherApp['request_id']);
+            if ($otherJob && $otherJob['shift_date'] === $job['shift_date']) {
+                $cStart = strtotime($job['shift_date'] . ' ' . $job['start_time']);
+                $cEnd   = strtotime($job['shift_date'] . ' ' . $job['end_time']);
+                $oStart = strtotime($otherJob['shift_date'] . ' ' . $otherJob['start_time']);
+                $oEnd   = strtotime($otherJob['shift_date'] . ' ' . $otherJob['end_time']);
+
+                if ($cEnd < $cStart) $cEnd += 86400;
+                if ($oEnd < $oStart) $oEnd += 86400;
+
+                if ($cStart < $oEnd && $oStart < $cEnd) {
+                    $appModel->update($otherApp['id'], ['status' => 'rejected']);
+                }
+            }
+        }
+
+        $withdrawDeadline = date('Y-m-d H:i:s', strtotime($appliedAt) + 60);
+
         return $this->respondCreated([
-            'status'  => 201,
-            'message' => 'Duty application submitted successfully. Awaiting family/admin approval.'
+            'status'             => 201,
+            'assigned'           => true,
+            'application_id'     => $appId,
+            'withdraw_deadline'  => $withdrawDeadline,
+            'message'            => 'You have been auto-assigned for this duty! You have 60 seconds to withdraw if applied by mistake.'
+        ]);
+    }
+
+    /**
+     * Withdraw application within 60-second window (FCFS system)
+     */
+    public function withdrawApplication()
+    {
+        $requestId   = $this->request->getVar('request_id');
+        $companionId = $this->request->getVar('companion_id');
+
+        $appModel     = new ApplicationModel();
+        $requestModel = new RequestModel();
+
+        $app = $appModel->where('request_id', $requestId)
+                        ->where('companion_id', $companionId)
+                        ->where('status', 'accepted')
+                        ->first();
+
+        if (!$app) {
+            return $this->failNotFound('No active application found to withdraw.');
+        }
+
+        // Check 60-second withdraw window
+        $appliedAt  = strtotime($app['applied_at'] ?? date('Y-m-d H:i:s'));
+        $secondsAgo = time() - $appliedAt;
+
+        if ($secondsAgo > 60) {
+            return $this->failForbidden('Withdraw window has expired (60 seconds limit). Please contact Admin if you need to cancel.');
+        }
+
+        // Mark as withdrawn
+        $appModel->update($app['id'], [
+            'status'       => 'withdrawn',
+            'withdrawn_at' => date('Y-m-d H:i:s')
+        ]);
+
+        // Unassign from request & revert to open
+        $requestModel->update($requestId, [
+            'status'                => 'open',
+            'assigned_companion_id' => null
+        ]);
+
+        return $this->respond([
+            'status'  => 200,
+            'message' => 'Application withdrawn. Shift is now open for other companions to apply.'
         ]);
     }
 
@@ -169,7 +283,7 @@ class CompanionController extends ResourceController
             'request_id'   => $requestId,
             'companion_id' => $companionId,
             'check_in'     => $nowTime,
-            'care_notes'   => json_encode([['date' => date('Y-m-d'), 'time' => date('H:i'), 'note' => 'Companion checked in at HoSZA Ward (' . date('d/m/Y H:i') . ')']]),
+            'care_notes'   => json_encode([['date' => date('Y-m-d'), 'time' => date('h:i A'), 'note' => 'Companion checked in at HoSZA Ward (' . date('d/m/Y h:i A') . ')']]),
             'qr_token'     => $qrToken
         ]);
 
@@ -221,13 +335,14 @@ class CompanionController extends ResourceController
             }
 
             $existingNotes = json_decode($log['care_notes'], true) ?? [];
+            $schedEndFormatted = !empty($requestData['end_time']) ? date('g:i A', strtotime($requestData['end_time'])) : '';
             $noteText = $isEarlyCheckout 
-                ? '⚠️ Early Check-out: Checked out at ' . date('H:i') . ' (Scheduled end: ' . $requestData['end_time'] . '). Worked duration: ' . $workedHours . ' hrs'
-                : 'Companion checked out & completed duty shift at HoSZA Ward (' . date('d/m/Y H:i') . '). Total duration: ' . $workedHours . ' hrs';
+                ? '⚠️ Early Check-out: Checked out at ' . date('h:i A') . ' (Scheduled end: ' . $schedEndFormatted . '). Worked duration: ' . $workedHours . ' hrs'
+                : 'Companion checked out & completed duty shift at HoSZA Ward (' . date('d/m/Y h:i A') . '). Total duration: ' . $workedHours . ' hrs';
 
             $existingNotes[] = [
                 'date' => date('Y-m-d'),
-                'time' => date('H:i'),
+                'time' => date('h:i A'),
                 'note' => $noteText
             ];
 
@@ -267,7 +382,7 @@ class CompanionController extends ResourceController
         $existingNotes = json_decode($log['care_notes'], true) ?? [];
         $existingNotes[] = [
             'date' => date('Y-m-d'),
-            'time' => date('H:i'),
+            'time' => date('h:i A'),
             'note' => $note
         ];
 

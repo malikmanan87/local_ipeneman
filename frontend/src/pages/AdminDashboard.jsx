@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI, requestAPI } from '../services/api';
+import CareNotesList from '../components/CareNotesList';
+import Swal from 'sweetalert2';
+import { showSuccess, showError, showWarning, showConfirm } from '../utils/swal';
+import { formatTimeAMPM, formatShiftRange } from '../utils/formatTime';
 
 const ROLE_CONFIG = {
   companion: { label: 'Companion',     color: '#34d399', bg: 'rgba(5,150,105,0.18)',  icon: '👨‍🦱' },
@@ -9,10 +13,12 @@ const ROLE_CONFIG = {
 };
 
 const STATUS_BADGE = {
-  open:        { label: 'Open',        color: '#34d399', bg: 'rgba(5,150,105,0.15)' },
-  assigned:    { label: 'Assigned',    color: '#fbbf24', bg: 'rgba(245,158,11,0.15)' },
-  in_progress: { label: 'In Progress', color: '#a78bfa', bg: 'rgba(139,92,246,0.15)' },
-  completed:   { label: 'Completed',   color: '#94a3b8', bg: 'rgba(100,116,139,0.15)' },
+  open:        { label: 'Open',           color: '#34d399', bg: 'rgba(5,150,105,0.15)' },
+  assigned:    { label: '⚡ Assigned (FCFS)', color: '#fbbf24', bg: 'rgba(245,158,11,0.15)' },
+  in_progress: { label: 'In Progress',    color: '#a78bfa', bg: 'rgba(139,92,246,0.15)' },
+  completed:   { label: 'Completed',      color: '#94a3b8', bg: 'rgba(100,116,139,0.15)' },
+  cancelled:   { label: 'Cancelled',      color: '#f87171', bg: 'rgba(239,68,68,0.15)' },
+  expired:     { label: '⌛ Expired',      color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
 };
 
 function SectionBadge({ status }) {
@@ -145,14 +151,21 @@ export default function AdminDashboard({ user }) {
   useEffect(() => { fetchData(); }, []);
 
   const handleApproveUser = async (id) => {
-    try { await adminAPI.verifyUser(id); fetchData(); }
-    catch { alert('Failed to approve account.'); }
+    try {
+      await adminAPI.verifyUser(id);
+      await showSuccess('Account Approved', 'User account verified and approved successfully.');
+      fetchData();
+    } catch { showError('Approval Failed', 'Failed to approve user account.'); }
   };
 
   const handleRejectUser = async (id) => {
-    if (!window.confirm('Reject and permanently remove this account?')) return;
-    try { await adminAPI.rejectUser(id); fetchData(); }
-    catch { alert('Failed to reject account.'); }
+    const confirmed = await showConfirm('Reject Account?', 'Are you sure you want to reject and permanently remove this user account?', 'Yes, Reject & Remove', 'warning');
+    if (!confirmed) return;
+    try {
+      await adminAPI.rejectUser(id);
+      await showSuccess('Account Removed', 'User account has been rejected and removed.');
+      fetchData();
+    } catch { showError('Rejection Failed', 'Failed to reject account.'); }
   };
 
   const handleVerifyPassSubmit = async (e) => {
@@ -176,38 +189,113 @@ export default function AdminDashboard({ user }) {
   const handleApproveApplicant = async (companionId) => {
     try {
       await requestAPI.acceptCompanion({ request_id: selectedRequest.id, companion_id: companionId });
-      alert('✓ Companion assigned successfully!');
+      await showSuccess('Companion Assigned', 'Companion assigned successfully to ward request!');
       setShowApplicantsModal(false); fetchData();
-    } catch { alert('Failed to assign companion.'); }
+    } catch { showError('Assignment Failed', 'Failed to assign companion.'); }
   };
 
   const handleRejectApplicant = async (companionId) => {
-    if (!window.confirm('Reject this companion applicant?')) return;
+    const confirmed = await showConfirm('Reject Applicant?', 'Are you sure you want to reject this companion applicant?', 'Yes, Reject', 'warning');
+    if (!confirmed) return;
     try {
       await requestAPI.rejectCompanion({ request_id: selectedRequest.id, companion_id: companionId });
-      alert('✓ Companion applicant rejected.');
+      await showSuccess('Applicant Rejected', 'Companion applicant rejected.');
       // Refresh applicants list
       const res = await requestAPI.getApplicants(selectedRequest.id);
       setApplicants(res.data.data || []);
       fetchData();
-    } catch { alert('Failed to reject companion application.'); }
+    } catch { showError('Rejection Failed', 'Failed to reject companion application.'); }
+  };
+
+  const handleCancelRequest = async (requestId) => {
+    const { value: reasonText, isConfirmed } = await Swal.fire({
+      title: 'Cancel Ward Request',
+      html: `
+        <div style="font-size: 0.86rem; color: #cbd5e1; margin-bottom: 0.85rem; line-height: 1.5; text-align: left;">
+          <p style="margin-bottom: 0.5rem;">Please specify the cancellation reason for patient & companion records:</p>
+          <div style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; padding: 0.65rem 0.85rem; color: #38bdf8; font-size: 0.81rem; line-height: 1.45;">
+            <strong>💵 Pay Per Worked Hours Policy:</strong><br/>
+            • <strong>In-Progress Shifts:</strong> Companion is compensated for actual worked hours up to cancellation.<br/>
+            • <strong>Unstarted Shifts:</strong> RM 0.00 payout.
+          </div>
+        </div>
+      `,
+      input: 'text',
+      inputPlaceholder: 'e.g. Patient discharged early / Ward emergency / Policy violation...',
+      inputValue: 'Cancelled by Admin',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Cancel Request',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#475569',
+      background: '#0f172a',
+      color: '#f8fafc',
+      customClass: {
+        popup: 'glass-panel-swal'
+      }
+    });
+
+    if (!isConfirmed) return;
+
+    const finalReason = reasonText?.trim() || 'Cancelled by Admin';
+
+    try {
+      await requestAPI.cancel({ request_id: requestId, reason: finalReason });
+      await showSuccess('Request Cancelled', `Ward request cancelled. Reason: "${finalReason}"`);
+      if (showDetailModal) setShowDetailModal(false);
+      fetchData();
+    } catch {
+      showError('Cancellation Failed', 'Failed to cancel ward request.');
+    }
+  };
+
+  const handleToggleUserStatus = async (targetUserId, targetUserName, currentStatus) => {
+    const newStatus   = currentStatus === 'inactive' ? 'active' : 'inactive';
+    const actionLabel = newStatus === 'inactive' ? 'Deactivate' : 'Activate';
+    const warningMsg  = newStatus === 'inactive'
+      ? `Deactivate account for "${targetUserName}"? Inactive users will NOT be able to log into the system.`
+      : `Activate account for "${targetUserName}"? User will regain login access to the system.`;
+
+    const confirmed = await showConfirm(
+      `${actionLabel} User Account?`,
+      warningMsg,
+      `Yes, ${actionLabel} Account`,
+      newStatus === 'inactive' ? 'warning' : 'info'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await adminAPI.toggleUserStatus(targetUserId, newStatus);
+      await showSuccess('Account Status Updated', `User "${targetUserName}" has been ${newStatus === 'active' ? 'ACTIVATED' : 'DEACTIVATED'}.`);
+      fetchData();
+    } catch {
+      showError('Update Failed', 'Failed to update user account status.');
+    }
   };
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
-    try { await adminAPI.updateSettings(rateSettings); setShowSettingsModal(false); fetchData(); }
-    catch { alert('Failed to update settings.'); }
+    try {
+      await adminAPI.updateSettings(rateSettings);
+      await showSuccess('Settings Saved', 'System rate settings updated successfully.');
+      setShowSettingsModal(false);
+      fetchData();
+    } catch { showError('Save Failed', 'Failed to update settings.'); }
   };
 
   const handleOnBehalfSubmit = async (e) => {
     e.preventDefault();
-    try { await requestAPI.create(formData); setShowOnBehalfModal(false); fetchData(); }
-    catch { alert('Failed to create request.'); }
+    try {
+      await requestAPI.create(formData);
+      await showSuccess('Request Created', 'Ward request created on behalf of patient/family successfully!');
+      setShowOnBehalfModal(false);
+      fetchData();
+    } catch { showError('Creation Failed', 'Failed to create request.'); }
   };
 
   const handleExportCSV = () => {
     if (!requests || requests.length === 0) {
-      alert('No financial data available to export.');
+      showWarning('No Data', 'No financial data available to export.');
       return;
     }
 
@@ -388,6 +476,8 @@ export default function AdminDashboard({ user }) {
             open: requests.filter(r => r.status === 'open').length,
             in_progress: requests.filter(r => r.status === 'in_progress' || r.status === 'assigned').length,
             completed: requests.filter(r => r.status === 'completed').length,
+            cancelled: requests.filter(r => r.status === 'cancelled').length,
+            expired: requests.filter(r => r.status === 'expired').length,
           };
 
           const filteredRequests = requests.filter(r => {
@@ -395,6 +485,8 @@ export default function AdminDashboard({ user }) {
             if (requestStatusFilter === 'open') return r.status === 'open';
             if (requestStatusFilter === 'in_progress') return r.status === 'in_progress' || r.status === 'assigned';
             if (requestStatusFilter === 'completed') return r.status === 'completed';
+            if (requestStatusFilter === 'cancelled') return r.status === 'cancelled';
+            if (requestStatusFilter === 'expired') return r.status === 'expired';
             return true;
           });
 
@@ -411,6 +503,8 @@ export default function AdminDashboard({ user }) {
                     { key: 'open',        label: 'Open',        count: statusCounts.open },
                     { key: 'in_progress', label: 'In Progress', count: statusCounts.in_progress },
                     { key: 'completed',   label: 'Completed',   count: statusCounts.completed },
+                    { key: 'cancelled',   label: 'Cancelled',   count: statusCounts.cancelled },
+                    { key: 'expired',     label: '⌛ Expired',   count: statusCounts.expired },
                     { key: 'all',         label: 'All',         count: statusCounts.all },
                   ].map(f => (
                     <button
@@ -464,19 +558,21 @@ export default function AdminDashboard({ user }) {
                           </td>
                           <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
                             <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatShiftRange(req.start_time, req.end_time)}</div>
                           </td>
                           <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#34d399', fontFamily: 'monospace' }}>
                             RM {(parseFloat(req.allowance_amount || 0) + parseFloat(req.tip_amount || 0)).toFixed(2)}
                           </td>
-                          <td style={{ padding: '0.85rem 1rem' }}><SectionBadge status={req.status} /></td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <SectionBadge status={req.status} />
+                            {req.cancellation_reason && (
+                              <div style={{ fontSize: '0.73rem', color: '#f87171', marginTop: '0.25rem', fontWeight: '600', maxWidth: '160px' }}>
+                                💬 {req.cancellation_reason}
+                              </div>
+                            )}
+                          </td>
                           <td style={{ padding: '0.85rem 1rem' }}>
                             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              {req.status === 'open' && (
-                                <button onClick={() => handleOpenApplicants(req)} className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem' }}>
-                                  👥 Applicants
-                                </button>
-                              )}
                               <button
                                 onClick={() => { setSelectedDetailRequest(req); setShowDetailModal(true); }}
                                 style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.08)', color: '#38bdf8', cursor: 'pointer', fontWeight: '700' }}
@@ -489,6 +585,14 @@ export default function AdminDashboard({ user }) {
                               >
                                 🔍 Pass
                               </button>
+                              {req.status !== 'completed' && req.status !== 'cancelled' && req.status !== 'expired' && (
+                                <button
+                                  onClick={() => handleCancelRequest(req.id)}
+                                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.1)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}
+                                >
+                                  🚫 Cancel
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -507,6 +611,7 @@ export default function AdminDashboard({ user }) {
             if (financeFilter === 'completed') return r.status === 'completed';
             if (financeFilter === 'pending') return r.status === 'in_progress' || r.status === 'assigned';
             if (financeFilter === 'open') return r.status === 'open';
+            if (financeFilter === 'cancelled') return r.status === 'cancelled';
             return true;
           });
 
@@ -519,29 +624,35 @@ export default function AdminDashboard({ user }) {
             .filter(r => r.status === 'in_progress' || r.status === 'assigned' || r.status === 'open')
             .reduce((sum, r) => sum + (parseFloat(r.allowance_amount || 0) + parseFloat(r.tip_amount || 0)), 0);
 
+          const cancelledPayoutCalc = requests
+            .filter(r => r.status === 'cancelled')
+            .reduce((sum, r) => sum + (parseFloat(r.allowance_amount || 0) + parseFloat(r.tip_amount || 0)), 0);
+
           const grandTotalCalc = requests
+            .filter(r => r.status !== 'cancelled')
             .reduce((sum, r) => sum + (parseFloat(r.allowance_amount || 0) + parseFloat(r.tip_amount || 0)), 0);
 
           const tipsCalc = requests
+            .filter(r => r.status !== 'cancelled')
             .reduce((sum, r) => sum + parseFloat(r.tip_amount || 0), 0);
 
           return (
             <div className="animate-fade-in">
               {/* Unified Financial Summary Panel with Separators */}
               <div className="glass-panel" style={{ padding: '1.25rem 1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid #34d399' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', alignItems: 'center' }}>
                   
                   {/* Item 1: Disbursed Payout */}
-                  <div style={{ paddingRight: '0.75rem' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Disbursed Payout (Completed)</div>
+                  <div style={{ paddingRight: '0.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Disbursed Payout</div>
                     <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#34d399', marginTop: '0.2rem' }}>
                       RM {completedPayoutCalc.toFixed(2)}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Full duty completed & verified</div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Completed shifts payout</div>
                   </div>
 
                   {/* Item 2: Pending Shift Payout */}
-                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.1rem', paddingRight: '0.75rem' }}>
+                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.85rem', paddingRight: '0.5rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pending Shift Payout</div>
                     <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#fbbf24', marginTop: '0.2rem' }}>
                       RM {pendingPayoutCalc.toFixed(2)}
@@ -549,22 +660,31 @@ export default function AdminDashboard({ user }) {
                     <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Reserved for active/open shifts</div>
                   </div>
 
-                  {/* Item 3: Grand Total Finance Value */}
-                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.1rem', paddingRight: '0.75rem' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Grand Total Finance Value</div>
+                  {/* Item 3: Cancelled / Refunded Value */}
+                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.85rem', paddingRight: '0.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cancelled / Refunded</div>
+                    <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#f87171', marginTop: '0.2rem' }}>
+                      RM {cancelledPayoutCalc.toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Option B RM 0.00 zeroed payout</div>
+                  </div>
+
+                  {/* Item 4: Active Net Finance Value */}
+                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.85rem', paddingRight: '0.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Net Finance Value</div>
                     <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#38bdf8', marginTop: '0.2rem' }}>
                       RM {grandTotalCalc.toFixed(2)}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>All-time total shift value</div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Excludes cancelled shifts</div>
                   </div>
 
-                  {/* Item 4: Total Tips / Bonus Collected */}
-                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '1.1rem' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Tips / Bonus Collected</div>
+                  {/* Item 5: Total Tips / Bonus Collected */}
+                  <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '0.85rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Tips / Bonus</div>
                     <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#a78bfa', marginTop: '0.2rem' }}>
                       RM {tipsCalc.toFixed(2)}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Optional tips from patient family</div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Tips from patient family</div>
                   </div>
 
                 </div>
@@ -586,6 +706,7 @@ export default function AdminDashboard({ user }) {
                         { key: 'completed', label: 'Disbursed' },
                         { key: 'pending',   label: 'Pending' },
                         { key: 'open',      label: 'Unassigned' },
+                        { key: 'cancelled', label: 'Cancelled' },
                       ].map(f => (
                         <button
                           key={f.key}
@@ -654,7 +775,7 @@ export default function AdminDashboard({ user }) {
                               </td>
                               <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
                                 <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatShiftRange(req.start_time, req.end_time)}</div>
                               </td>
                               <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.83rem' }}>RM {base.toFixed(2)}</td>
                               <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.83rem', color: '#fbbf24' }}>RM {tip.toFixed(2)}</td>
@@ -816,7 +937,7 @@ export default function AdminDashboard({ user }) {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                     <thead>
                       <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                        {['No.', 'Name', 'IC / MyKad', 'Gender', 'Role', 'Contact', 'UniSZA ID', 'Account'].map(h => (
+                        {['No.', 'Name', 'IC / MyKad', 'Gender', 'Role', 'Contact', 'UniSZA ID', 'Account', 'System Access & Action'].map(h => (
                           <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
                         ))}
                       </tr>
@@ -846,6 +967,60 @@ export default function AdminDashboard({ user }) {
                               ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#34d399', background: 'rgba(5,150,105,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>✓ Verified</span>
                               : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>⏳ Pending</span>
                             }
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <div
+                              onClick={() => handleToggleUserStatus(u.id, u.name, u.status)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.55rem',
+                                cursor: 'pointer',
+                                userSelect: 'none'
+                              }}
+                              title={`Click to ${u.status === 'inactive' ? 'Activate' : 'Deactivate'} account for ${u.name}`}
+                            >
+                              {/* Toggle Switch Track */}
+                              <div
+                                style={{
+                                  width: '42px',
+                                  height: '22px',
+                                  borderRadius: '9999px',
+                                  background: u.status === 'inactive' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(52, 211, 153, 0.25)',
+                                  border: u.status === 'inactive' ? '1.5px solid #f87171' : '1.5px solid #34d399',
+                                  position: 'relative',
+                                  transition: 'all 0.25s ease',
+                                  boxShadow: u.status === 'inactive' ? '0 0 10px rgba(239,68,68,0.25)' : '0 0 10px rgba(52,211,153,0.25)'
+                                }}
+                              >
+                                {/* Sliding Knob */}
+                                <div
+                                  style={{
+                                    width: '16px',
+                                    height: '16px',
+                                    borderRadius: '50%',
+                                    background: u.status === 'inactive' ? '#f87171' : '#34d399',
+                                    position: 'absolute',
+                                    top: '1.5px',
+                                    left: u.status === 'inactive' ? '2.5px' : '20.5px',
+                                    transition: 'all 0.25s ease',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+                                  }}
+                                />
+                              </div>
+
+                              {/* Status Label Text */}
+                              <span
+                                style={{
+                                  fontSize: '0.78rem',
+                                  fontWeight: '800',
+                                  color: u.status === 'inactive' ? '#f87171' : '#34d399',
+                                  letterSpacing: '0.02em'
+                                }}
+                              >
+                                {u.status === 'inactive' ? '🔴 Inactive' : '🟢 Active'}
+                              </span>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1115,7 +1290,7 @@ export default function AdminDashboard({ user }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <div><strong>Ward:</strong> {selectedDetailRequest.ward_name} ({selectedDetailRequest.bed_number})</div>
                 <div><strong>Shift Date:</strong> {selectedDetailRequest.shift_date}</div>
-                <div><strong>Scheduled Time:</strong> {selectedDetailRequest.start_time} – {selectedDetailRequest.end_time}</div>
+                <div><strong>Scheduled Time:</strong> {formatShiftRange(selectedDetailRequest.start_time, selectedDetailRequest.end_time)}</div>
                 <div><strong>Allowance:</strong> RM {parseFloat(selectedDetailRequest.allowance_amount || 0).toFixed(2)}</div>
               </div>
               {selectedDetailRequest.task_details && (
@@ -1202,51 +1377,18 @@ export default function AdminDashboard({ user }) {
               )}
             </div>
 
-            {/* Patient Care Notes (Grouped by Date Category) */}
-            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>
-              <div style={{ fontWeight: '800', color: '#a78bfa', marginBottom: '0.5rem', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>📝 Patient Care Notes</span>
-                <span style={{ fontSize: '0.7rem', opacity: 0.8, textTransform: 'none', color: '#c4b5fd' }}>Grouped by Date</span>
+            {/* Patient Care Notes (Shows latest 2 notes + Read More modal) */}
+            {selectedDetailRequest.duty_log && selectedDetailRequest.duty_log.care_notes_list && selectedDetailRequest.duty_log.care_notes_list.length > 0 ? (
+              <CareNotesList
+                notes={selectedDetailRequest.duty_log.care_notes_list}
+                shiftDate={selectedDetailRequest.shift_date}
+                title="📝 Patient Care Notes"
+              />
+            ) : (
+              <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1rem', marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                No care notes recorded yet.
               </div>
-              {selectedDetailRequest.duty_log && selectedDetailRequest.duty_log.care_notes_list && selectedDetailRequest.duty_log.care_notes_list.length > 0 ? (() => {
-                const grouped = {};
-                selectedDetailRequest.duty_log.care_notes_list.forEach(item => {
-                  let dateKey = item.date;
-                  if (!dateKey) {
-                    const m = item.note && item.note.match(/(\d{2}\/\d{2}\/\d{4})/);
-                    dateKey = m ? m[1] : (selectedDetailRequest.shift_date || 'Care Log');
-                  }
-                  if (dateKey.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                    const [y, m, d] = dateKey.split('-');
-                    dateKey = `${d}/${m}/${y}`;
-                  }
-                  if (!grouped[dateKey]) grouped[dateKey] = [];
-                  grouped[dateKey].push(item);
-                });
-
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                    {Object.entries(grouped).map(([dateStr, noteList]) => (
-                      <div key={dateStr} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '0.6rem 0.75rem', border: '1px solid rgba(139,92,246,0.15)' }}>
-                        <div style={{ fontWeight: '700', color: '#fbbf24', fontSize: '0.76rem', marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.2rem' }}>
-                          📅 Date: {dateStr}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                          {noteList.map((n, idx) => (
-                            <div key={idx} style={{ fontSize: '0.8rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
-                              <span style={{ color: '#a78bfa', fontWeight: '700', whiteSpace: 'nowrap' }}>[{n.time || '—'}]</span>
-                              <span style={{ color: '#e2e8f0' }}>{n.note}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })() : (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>No care notes recorded yet.</div>
-              )}
-            </div>
+            )}
 
             {/* Rating & Review */}
             <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '12px', padding: '1rem', fontSize: '0.85rem' }}>
@@ -1268,6 +1410,27 @@ export default function AdminDashboard({ user }) {
                   {selectedDetailRequest.status === 'completed' ? 'No rating submitted yet by family.' : 'Rating will be available after shift completion.'}
                 </div>
               )}
+            </div>
+
+            <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {selectedDetailRequest.status !== 'completed' && selectedDetailRequest.status !== 'cancelled' ? (
+                <button
+                  type="button"
+                  onClick={() => handleCancelRequest(selectedDetailRequest.id)}
+                  style={{ fontSize: '0.82rem', padding: '0.45rem 1rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.12)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}
+                >
+                  🚫 Cancel Request
+                </button>
+              ) : <div />}
+
+              <button
+                type="button"
+                onClick={() => setShowDetailModal(false)}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.82rem', padding: '0.45rem 1.1rem' }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

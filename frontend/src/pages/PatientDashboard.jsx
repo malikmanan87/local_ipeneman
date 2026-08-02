@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { requestAPI, adminAPI } from '../services/api';
+import CareNotesList from '../components/CareNotesList';
+import { showSuccess, showError } from '../utils/swal';
+import { formatTimeAMPM, formatShiftRange } from '../utils/formatTime';
 
 const STATUS_STYLE = {
   open:        { color: '#34d399', bg: 'rgba(5,150,105,0.15)',   label: 'Open' },
-  assigned:    { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  label: 'Assigned' },
+  assigned:    { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  label: '⚡ Assigned (FCFS)' },
   in_progress: { color: '#a78bfa', bg: 'rgba(139,92,246,0.15)', label: 'In Progress' },
   completed:   { color: '#94a3b8', bg: 'rgba(100,116,139,0.15)',label: 'Completed' },
+  cancelled:   { color: '#f87171', bg: 'rgba(239,68,68,0.15)',  label: '🚫 Cancelled by Admin' },
+  expired:     { color: '#64748b', bg: 'rgba(100,116,139,0.12)', label: '⌛ Expired' },
 };
 
 function StatusBadge({ status }) {
@@ -60,9 +65,29 @@ export default function PatientDashboard({ user }) {
         requestAPI.getMyRequests(user.id),
         adminAPI.getSettings(),
       ]);
-      setMyRequests(reqRes.data || []);
+      const list = reqRes.data || [];
+      setMyRequests(list);
       if (settingsRes.data.settings?.default_hourly_rate) {
         setAdminHourlyRate(parseFloat(settingsRes.data.settings.default_hourly_rate));
+      }
+
+      // Smart Priority Auto-Selection:
+      // 1st Priority: Active Requests (open / assigned / in_progress)
+      // 2nd Priority: Completed Shifts
+      // 3rd Priority: Cancelled Requests
+      // 4th Priority: Total Requests (all)
+      const activeCnt    = list.filter(r => r.status === 'open' || r.status === 'assigned' || r.status === 'in_progress').length;
+      const completedCnt = list.filter(r => r.status === 'completed').length;
+      const cancelledCnt = list.filter(r => r.status === 'cancelled').length;
+
+      if (activeCnt > 0) {
+        setRequestFilter('active');
+      } else if (completedCnt > 0) {
+        setRequestFilter('completed');
+      } else if (cancelledCnt > 0) {
+        setRequestFilter('cancelled');
+      } else {
+        setRequestFilter('all');
       }
     } catch (err) {
       console.error(err);
@@ -138,11 +163,11 @@ export default function PatientDashboard({ user }) {
         rating: ratingValue,
         review: reviewText
       });
-      alert('✓ Thank you for your feedback!');
+      await showSuccess('Thank You', 'Thank you for your feedback!');
       setShowRatingModal(false);
       fetchMyRequests();
     } catch (err) {
-      alert(err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to submit rating.');
+      showError('Feedback Failed', err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to submit rating.');
     }
   };
 
@@ -152,22 +177,34 @@ export default function PatientDashboard({ user }) {
     try {
       if (editingId) {
         await requestAPI.update(editingId, payload);
-        alert('✓ Request updated successfully!');
+        await showSuccess('Request Updated', 'Request updated successfully!');
       } else {
         await requestAPI.create(payload);
-        alert('✓ Companion request created!');
+        await showSuccess('Request Created', 'Companion request created successfully!');
       }
       setShowModal(false);
       setEditingId(null);
       fetchMyRequests();
     } catch (err) {
-      alert(err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to save request.');
+      showError('Save Failed', err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to save request.');
     }
   };
 
+  const [requestFilter, setRequestFilter] = useState('all'); // 'all' | 'active' | 'completed' | 'cancelled'
+
   const activeCount = myRequests.filter(r => r.status === 'open' || r.status === 'assigned' || r.status === 'in_progress').length;
   const completedCount = myRequests.filter(r => r.status === 'completed').length;
+  const cancelledCount = myRequests.filter(r => r.status === 'cancelled').length;
+  const expiredCount = myRequests.filter(r => r.status === 'expired').length;
   const pendingApplicantsCount = myRequests.filter(r => r.status === 'open' && r.application_count > 0).reduce((acc, r) => acc + parseInt(r.application_count), 0);
+
+  const filteredRequests = myRequests.filter(r => {
+    if (requestFilter === 'active') return r.status === 'open' || r.status === 'assigned' || r.status === 'in_progress';
+    if (requestFilter === 'completed') return r.status === 'completed';
+    if (requestFilter === 'cancelled') return r.status === 'cancelled';
+    if (requestFilter === 'expired') return r.status === 'expired';
+    return true;
+  });
 
   return (
     <div style={{ background: 'var(--bg-dark)', minHeight: '100vh' }}>
@@ -189,16 +226,26 @@ export default function PatientDashboard({ user }) {
           </button>
         </div>
 
-        {/* ── Stat Cards ── */}
+        {/* ── Stat Cards (Interactive Filter Links) ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.1rem', marginBottom: '1.75rem' }}>
           {[
-            { label: 'Active Requests', value: activeCount, icon: '📋', color: '#38bdf8' },
-            { label: 'Completed Shifts', value: completedCount, icon: '✅', color: '#34d399' },
-            { label: 'Pending Applicants', value: pendingApplicantsCount, icon: '👥', color: '#f59e0b', alert: pendingApplicantsCount > 0 },
-            { label: 'Total Requests', value: myRequests.length, icon: '📊', color: '#a78bfa' },
+            { key: 'active',    label: 'Active Requests',    value: activeCount,    icon: '📋', color: '#38bdf8' },
+            { key: 'completed', label: 'Completed Shifts',   value: completedCount, icon: '✅', color: '#34d399' },
+            { key: 'cancelled', label: 'Cancelled Requests', value: cancelledCount, icon: '🚫', color: '#f87171' },
+            { key: 'expired',   label: 'Expired Requests',   value: expiredCount,   icon: '⌛', color: '#64748b' },
+            { key: 'all',       label: 'Total Requests',     value: myRequests.length, icon: '📊', color: '#a78bfa' },
           ].map(s => (
-            <div key={s.label} className="glass-panel" style={{ padding: '1.25rem', position: 'relative', border: s.alert ? `1.5px solid ${s.color}` : '1px solid var(--glass-border)' }}>
-              {s.alert && <span style={{ position: 'absolute', top: '0.85rem', right: '0.85rem', width: '8px', height: '8px', borderRadius: '50%', background: s.color, boxShadow: `0 0 8px ${s.color}` }} />}
+            <div
+              key={s.key}
+              onClick={() => setRequestFilter(s.key)}
+              className="glass-panel"
+              style={{
+                padding: '1.25rem', cursor: 'pointer', position: 'relative',
+                border: requestFilter === s.key ? `1.5px solid ${s.color}` : '1px solid var(--glass-border)',
+                boxShadow: requestFilter === s.key ? `0 0 16px ${s.color}33` : 'none',
+                transition: 'all 0.2s ease'
+              }}
+            >
               <div style={{ fontSize: '1.4rem', marginBottom: '0.5rem' }}>{s.icon}</div>
               <div style={{ fontSize: '1.6rem', fontWeight: '800', color: s.color, lineHeight: 1 }}>{s.value}</div>
               <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#e2e8f0', marginTop: '0.3rem' }}>{s.label}</div>
@@ -207,20 +254,43 @@ export default function PatientDashboard({ user }) {
         </div>
 
         {/* ── Requests List ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 My Companion Requests</h2>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{myRequests.length} total</span>
+          {/* Status Filter Pills */}
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {[
+              { key: 'active',    label: 'Active',    count: activeCount },
+              { key: 'completed', label: 'Completed', count: completedCount },
+              { key: 'cancelled', label: 'Cancelled', count: cancelledCount },
+              { key: 'expired',   label: '⌛ Expired', count: expiredCount },
+              { key: 'all',       label: 'All Requests', count: myRequests.length },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setRequestFilter(f.key)}
+                style={{
+                  padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
+                  fontWeight: '700', cursor: 'pointer',
+                  background: requestFilter === f.key ? '#38bdf8' : 'rgba(255,255,255,0.07)',
+                  color: requestFilter === f.key ? '#0f172a' : 'var(--text-muted)',
+                  border: 'none', transition: 'all 0.15s ease',
+                }}
+              >
+                {f.label} <span style={{ opacity: 0.75 }}>({f.count})</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
-        ) : myRequests.length === 0 ? (
+        ) : filteredRequests.length === 0 ? (
           <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
-            No companion requests yet. Click <strong style={{ color: '#f1f5f9' }}>+ Request New Companion</strong> above to get started.
+            No companion requests found for this filter.
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
-            {myRequests.map(req => {
+            {filteredRequests.map(req => {
               const isEditable = req.status === 'open' && (!req.application_count || req.application_count === 0);
               const baseAmt = parseFloat(req.allowance_amount || 0);
               const tipAmt = parseFloat(req.tip_amount || 0);
@@ -244,9 +314,23 @@ export default function PatientDashboard({ user }) {
 
                     <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7', marginBottom: '0.75rem' }}>
                       <p>🏥 {req.ward_name} · Bed: <strong style={{ color: '#f1f5f9' }}>{req.bed_number}</strong></p>
-                      <p>🗓️ {req.shift_date} · {req.start_time} – {req.end_time}</p>
+                      <p>🗓️ {req.shift_date} · {formatShiftRange(req.start_time, req.end_time)}</p>
                       <p>📌 {req.task_details}</p>
                     </div>
+
+                    {req.status === 'cancelled' && (
+                      <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '0.65rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8rem', color: '#f87171' }}>
+                        <strong>🚫 Cancellation Reason:</strong> {req.cancellation_reason || 'Cancelled by Admin'}
+                      </div>
+                    )}
+
+                    {req.status === 'expired' && (
+                      <div style={{ background: 'rgba(100,116,139,0.12)', border: '1px solid rgba(100,116,139,0.3)', borderRadius: '10px', padding: '0.65rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.8rem', color: '#94a3b8', lineHeight: '1.5' }}>
+                        <strong style={{ display: 'block', marginBottom: '0.2rem' }}>⌛ Request Expired — No Companion Was Available</strong>
+                        The shift end time has passed without a companion check-in. No payout was incurred.
+                        <div style={{ marginTop: '0.35rem', fontSize: '0.76rem', color: '#64748b' }}>You may create a new request for a future shift date.</div>
+                      </div>
+                    )}
 
                     {/* Allowance Breakdown */}
                     <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '0.75rem', marginBottom: '0.75rem', fontSize: '0.82rem', lineHeight: '1.65' }}>
@@ -255,49 +339,14 @@ export default function PatientDashboard({ user }) {
                       <div style={{ color: '#34d399', fontWeight: '800', marginTop: '0.2rem' }}>💵 Total: RM {totalAmt.toFixed(2)}</div>
                     </div>
 
-                    {/* Patient Care Notes (Visible to Patient/Family, Grouped by Date Category) */}
-                    {req.duty_log && req.duty_log.care_notes_list && req.duty_log.care_notes_list.length > 0 && (() => {
-                      const grouped = {};
-                      req.duty_log.care_notes_list.forEach(item => {
-                        let dateKey = item.date;
-                        if (!dateKey) {
-                          const m = item.note && item.note.match(/(\d{2}\/\d{2}\/\d{4})/);
-                          dateKey = m ? m[1] : (req.shift_date || 'Care Log');
-                        }
-                        if (dateKey.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                          const [y, m, d] = dateKey.split('-');
-                          dateKey = `${d}/${m}/${y}`;
-                        }
-                        if (!grouped[dateKey]) grouped[dateKey] = [];
-                        grouped[dateKey].push(item);
-                      });
-
-                      return (
-                        <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: '10px', padding: '0.75rem', marginBottom: '0.75rem', fontSize: '0.8rem' }}>
-                          <div style={{ fontWeight: '800', color: '#a78bfa', marginBottom: '0.5rem', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>📝 Patient Care Notes (Live Logs)</span>
-                            <span style={{ fontSize: '0.7rem', opacity: 0.8, textTransform: 'none', color: '#c4b5fd' }}>Grouped by Date</span>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                            {Object.entries(grouped).map(([dateStr, noteList]) => (
-                              <div key={dateStr} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '0.5rem 0.65rem', border: '1px solid rgba(139,92,246,0.15)' }}>
-                                <div style={{ fontWeight: '700', color: '#fbbf24', fontSize: '0.75rem', marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.2rem' }}>
-                                  📅 Date: {dateStr}
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                  {noteList.map((note, idx) => (
-                                    <div key={idx} style={{ fontSize: '0.78rem', display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
-                                      <span style={{ color: '#a78bfa', fontWeight: '700', whiteSpace: 'nowrap' }}>[{note.time}]</span>
-                                      <span style={{ color: '#f1f5f9' }}>{note.note}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    {/* Patient Care Notes Component (Shows latest 2 notes + Read More modal) */}
+                    {req.duty_log && (
+                      <CareNotesList
+                        notes={req.duty_log.care_notes_list}
+                        shiftDate={req.shift_date}
+                        title="📝 Patient Care Notes (Live Logs)"
+                      />
+                    )}
 
                     {req.user_rating && (
                       <div style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', padding: '0.5rem 0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: '#fbbf24', marginBottom: '0.5rem' }}>
@@ -310,9 +359,7 @@ export default function PatientDashboard({ user }) {
                   <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {req.status === 'open' && (
                       <div style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: '8px', padding: '0.5rem 0.75rem', fontSize: '0.78rem', color: '#38bdf8', textAlign: 'center', fontWeight: '700' }}>
-                        {req.application_count > 0 
-                          ? `👥 ${req.application_count} Companion Applicant(s) Received — Awaiting HoSZA Admin Approval` 
-                          : '⏳ Request Published — Awaiting Companion Applications & HoSZA Admin Approval'}
+                        ⏳ Request Published — Awaiting Companion (FCFS Auto-Assign)
                       </div>
                     )}
                     {req.status === 'completed' && !req.user_rating && (

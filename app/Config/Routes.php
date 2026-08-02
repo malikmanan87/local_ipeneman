@@ -22,12 +22,13 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($
     $routes->get('requests/available', 'RequestController::availableJobs');
     $routes->get('requests/my/(:num)', 'RequestController::myRequests/$1');
     $routes->get('requests/applicants/(:num)', 'RequestController::getApplicants/$1');
-    $routes->post('requests/accept-companion', 'RequestController::acceptCompanion');
-    $routes->post('requests/reject-companion', 'RequestController::rejectCompanion');
+    $routes->post('requests/cancel', 'RequestController::cancelRequest');
     $routes->post('requests/rate-companion', 'RequestController::rateCompanion');
+    $routes->post('requests/auto-expire', 'RequestController::autoExpireRequests');
 
     // Companion Routes
     $routes->post('companion/apply', 'CompanionController::apply');
+    $routes->post('companion/withdraw', 'CompanionController::withdrawApplication');
     $routes->get('companion/duties/(:num)', 'CompanionController::myDuties/$1');
     $routes->post('companion/check-in', 'CompanionController::checkIn');
     $routes->post('companion/check-out', 'CompanionController::checkOut');
@@ -42,6 +43,7 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($
     $routes->post('admin/verify-pass', 'AdminController::verifyPass');
     $routes->get('admin/unverified-users', 'AdminController::getUnverifiedUsers');
     $routes->get('admin/all-users', 'AdminController::allUsers');
+    $routes->post('admin/toggle-user-status', 'AdminController::toggleUserStatus');
     $routes->post('admin/verify-user', 'AdminController::verifyUser');
     $routes->post('admin/reject-user', 'AdminController::rejectUser');
 });

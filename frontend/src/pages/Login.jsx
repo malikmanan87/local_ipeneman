@@ -40,8 +40,20 @@ export default function Login({ onLoginSuccess, switchToRegister }) {
         </p>
 
         {error && (
-          <div style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '0.75rem', borderRadius: '10px', fontSize: '0.85rem', marginBottom: '1rem' }}>
-            {error}
+          <div style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '0.85rem', borderRadius: '10px', fontSize: '0.85rem', marginBottom: '1rem', lineHeight: '1.5' }}>
+            {error.includes('ACCOUNT INACTIVE') ? (
+              <div>
+                <strong style={{ color: '#f87171', display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>🚫 Account Deactivated</strong>
+                {error.replace('ACCOUNT INACTIVE:', '').trim()}
+              </div>
+            ) : error.includes('ACCOUNT PENDING VERIFICATION') ? (
+              <div>
+                <strong style={{ color: '#fbbf24', display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>⏳ Account Pending Approval</strong>
+                {error.replace('ACCOUNT PENDING VERIFICATION:', '').trim()}
+              </div>
+            ) : (
+              error
+            )}
           </div>
         )}
 

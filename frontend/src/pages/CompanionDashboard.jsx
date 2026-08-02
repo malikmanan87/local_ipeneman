@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { requestAPI, companionAPI } from '../services/api';
 import EPassModal from '../components/EPassModal';
+import CareNotesList from '../components/CareNotesList';
+import { showSuccess, showError, showConfirm } from '../utils/swal';
+import { formatTimeAMPM, formatShiftRange } from '../utils/formatTime';
 
 const STATUS_STYLE = {
-  assigned:    { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  label: 'Assigned' },
+  assigned:    { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  label: '⚡ Assigned (FCFS)' },
   in_progress: { color: '#a78bfa', bg: 'rgba(139,92,246,0.15)', label: 'In Progress' },
   completed:   { color: '#94a3b8', bg: 'rgba(100,116,139,0.15)',label: 'Completed' },
   open:        { color: '#34d399', bg: 'rgba(5,150,105,0.15)',   label: 'Open' },
+  cancelled:   { color: '#f87171', bg: 'rgba(239,68,68,0.15)',  label: '🚫 Cancelled by Admin' },
+  expired:     { color: '#64748b', bg: 'rgba(100,116,139,0.15)', label: '⌛ Shift Expired' },
 };
 
 function StatusBadge({ status }) {
@@ -32,10 +37,15 @@ export default function CompanionDashboard({ user }) {
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [selectedJobForConsent, setSelectedJobForConsent] = useState(null);
   const [healthAgreed, setHealthAgreed] = useState(false);
+  // FCFS: Track 60-second withdraw countdown per job (keyed by request_id)
+  const [withdrawCountdowns, setWithdrawCountdowns] = useState({});
 
   const fetchCompanionData = async () => {
     setLoading(true);
     try {
+      // Auto-expire stale requests before loading
+      try { await requestAPI.autoExpire(); } catch (_) {}
+
       const [jobsRes, dutiesRes, ratingsRes] = await Promise.all([
         requestAPI.getAvailable(user.gender, user.id),
         companionAPI.getMyDuties(user.id),
@@ -44,6 +54,20 @@ export default function CompanionDashboard({ user }) {
 
       const jobsList   = jobsRes.data.data || [];
       const dutiesList = dutiesRes.data || [];
+
+      // Build initial withdraw countdowns for jobs the companion just applied for
+      const newCountdowns = {};
+      jobsList.forEach(job => {
+        if (job.has_applied && job.applied_at) {
+          const appliedTs = new Date(job.applied_at.replace(' ', 'T')).getTime();
+          const secsElapsed = Math.floor((Date.now() - appliedTs) / 1000);
+          const secsLeft = 60 - secsElapsed;
+          if (secsLeft > 0) {
+            newCountdowns[job.id] = secsLeft;
+          }
+        }
+      });
+      setWithdrawCountdowns(newCountdowns);
 
       setAvailableJobs(jobsList);
       setMyDuties(dutiesList);
@@ -77,31 +101,66 @@ export default function CompanionDashboard({ user }) {
 
   useEffect(() => { fetchCompanionData(); }, [user]);
 
+  // FCFS: Countdown timer tick every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWithdrawCountdowns(prev => {
+        const updated = {};
+        Object.entries(prev).forEach(([jobId, secs]) => {
+          if (secs > 1) updated[jobId] = secs - 1;
+        });
+        return updated;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleApply = async (requestId) => {
     try {
       const res = await companionAPI.applyJob({ request_id: requestId, companion_id: user.id });
-      alert(res.data.message || '✓ Duty application submitted successfully. Awaiting family/admin approval.');
+      // Start 60-second withdraw countdown
+      setWithdrawCountdowns(prev => ({ ...prev, [requestId]: 60 }));
+      await showSuccess('⚡ Auto-Assigned!', res.data.message || 'You have been auto-assigned to this duty shift! You have 60 seconds to withdraw.');
       fetchCompanionData();
     } catch (err) {
-      alert(err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to apply.');
+      showError('Application Failed', err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to apply.');
+    }
+  };
+
+  const handleWithdraw = async (requestId) => {
+    const confirmed = await showConfirm(
+      'Withdraw Application?',
+      'Are you sure? This will release the shift back to open for other companions.',
+      'Yes, Withdraw',
+      'warning'
+    );
+    if (!confirmed) return;
+    try {
+      await companionAPI.withdrawApplication({ request_id: requestId, companion_id: user.id });
+      setWithdrawCountdowns(prev => { const n = {...prev}; delete n[requestId]; return n; });
+      await showSuccess('Withdrawn', 'Application withdrawn. Shift is now open again.');
+      fetchCompanionData();
+    } catch (err) {
+      showError('Withdraw Failed', err.response?.data?.messages?.error || err.response?.data?.message || 'Withdraw window may have expired (60s limit).');
     }
   };
 
   const handleCheckIn = async (requestId) => {
     try {
       await companionAPI.checkIn({ request_id: requestId, companion_id: user.id });
-      alert('✓ Checked in at HoSZA Ward!');
+      await showSuccess('Checked In', 'Checked in successfully at HoSZA Ward!');
       fetchCompanionData();
-    } catch (err) { alert('Check-in failed.'); }
+    } catch (err) { showError('Check-in Failed', 'Could not complete check-in.'); }
   };
 
   const handleCheckOut = async (requestId) => {
-    if (!window.confirm('Complete and end this duty shift?')) return;
+    const confirmed = await showConfirm('Complete Shift?', 'Are you sure you want to complete and end this duty shift?', 'Yes, End Shift', 'warning');
+    if (!confirmed) return;
     try {
       await companionAPI.checkOut({ request_id: requestId, companion_id: user.id });
-      alert('✓ Shift completed successfully.');
+      await showSuccess('Shift Completed', 'Shift completed successfully.');
       fetchCompanionData();
-    } catch (err) { alert('Check-out failed.'); }
+    } catch (err) { showError('Check-out Failed', 'Could not end shift.'); }
   };
 
   const handleAddNote = async (requestId) => {
@@ -110,13 +169,15 @@ export default function CompanionDashboard({ user }) {
     try {
       await companionAPI.addCareNote({ request_id: requestId, note });
       setCareNoteText({ ...careNoteText, [requestId]: '' });
-      alert('Care note added!');
+      await showSuccess('Care Note Saved', 'Care note has been added.');
       fetchCompanionData();
-    } catch (err) { alert('Failed to add care note.'); }
+    } catch (err) { showError('Note Failed', 'Failed to add care note.'); }
   };
 
   const activeDuties = myDuties.filter(d => d.status === 'assigned' || d.status === 'in_progress');
   const completedDuties = myDuties.filter(d => d.status === 'completed');
+  const cancelledDuties = myDuties.filter(d => d.status === 'cancelled');
+  const expiredDuties = myDuties.filter(d => d.status === 'expired');
   const totalEarnings = completedDuties.reduce((acc, d) => acc + parseFloat(d.allowance_amount || 0) + parseFloat(d.tip_amount || 0), 0);
 
   return (
@@ -190,6 +251,7 @@ export default function CompanionDashboard({ user }) {
           const filteredDuties = myDuties.filter(d => {
             if (dutyFilter === 'active') return d.status === 'assigned' || d.status === 'in_progress';
             if (dutyFilter === 'completed') return d.status === 'completed';
+            if (dutyFilter === 'cancelled') return d.status === 'cancelled';
             return true;
           });
 
@@ -202,6 +264,8 @@ export default function CompanionDashboard({ user }) {
                   {[
                     { key: 'active',    label: 'Active Duties',  count: activeDuties.length },
                     { key: 'completed', label: 'Completed',      count: completedDuties.length },
+                    { key: 'cancelled', label: 'Cancelled',      count: cancelledDuties.length },
+                    { key: 'expired',   label: 'Expired',        count: expiredDuties.length },
                     { key: 'all',       label: 'All Duties',     count: myDuties.length },
                   ].map(f => (
                     <button
@@ -244,7 +308,7 @@ export default function CompanionDashboard({ user }) {
                     <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
                       <p>🛏️ Bed: <strong style={{ color: '#f1f5f9' }}>{duty.bed_number}</strong></p>
                       <p>👴 Patient: <strong style={{ color: '#f1f5f9' }}>{duty.patient_name}</strong> (Age {duty.patient_age})</p>
-                      <p>🗓️ Scheduled Shift: {duty.shift_date} ({duty.start_time} – {duty.end_time})</p>
+                      <p>🗓️ Scheduled Shift: {duty.shift_date} ({formatShiftRange(duty.start_time, duty.end_time)})</p>
                       {duty.duty_log && (duty.duty_log.check_in || duty.duty_log.check_out) && (
                         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.75rem', borderRadius: '8px', marginTop: '0.4rem', marginBottom: '0.4rem', border: '1px solid rgba(255,255,255,0.06)' }}>
                           <p style={{ color: '#38bdf8', fontWeight: '700', fontSize: '0.78rem' }}>🕒 Actual Time Record:</p>
@@ -274,59 +338,33 @@ export default function CompanionDashboard({ user }) {
                           ⏹ End Shift
                         </button>
                       )}
-                      {duty.status === 'completed' && (
+                      {(duty.status === 'completed' || duty.status === 'cancelled') && (
                         <button
                           onClick={() => { setSelectedClaimDuty(duty); setShowClaimModal(true); }}
-                          style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.12)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
+                          style={{
+                            fontSize: '0.8rem',
+                            padding: '0.4rem 0.85rem',
+                            borderRadius: '8px',
+                            border: duty.status === 'cancelled' ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(52,211,153,0.4)',
+                            background: duty.status === 'cancelled' ? 'rgba(239,68,68,0.12)' : 'rgba(52,211,153,0.12)',
+                            color: duty.status === 'cancelled' ? '#f87171' : '#34d399',
+                            cursor: 'pointer',
+                            fontWeight: '700'
+                          }}
                         >
-                          🧾 E-Claim Receipt (RM {duty.actual_total_payout || (parseFloat(duty.allowance_amount || 0) + parseFloat(duty.tip_amount || 0)).toFixed(2)})
+                          🧾 {duty.status === 'cancelled' ? 'Cancellation Receipt' : 'E-Claim Receipt'} (RM {duty.actual_total_payout !== undefined && duty.actual_total_payout !== null ? duty.actual_total_payout : (duty.status === 'cancelled' ? '0.00' : (parseFloat(duty.allowance_amount || 0) + parseFloat(duty.tip_amount || 0)).toFixed(2))})
                         </button>
                       )}
                     </div>
 
-                    {/* Care Note Input & Log (Grouped by Date Category) */}
-                    {duty.duty_log && duty.duty_log.care_notes_list && duty.duty_log.care_notes_list.length > 0 && (() => {
-                      const grouped = {};
-                      duty.duty_log.care_notes_list.forEach(item => {
-                        let dateKey = item.date;
-                        if (!dateKey) {
-                          const m = item.note && item.note.match(/(\d{2}\/\d{2}\/\d{4})/);
-                          dateKey = m ? m[1] : (duty.shift_date || 'Care Log');
-                        }
-                        if (dateKey.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                          const [y, m, d] = dateKey.split('-');
-                          dateKey = `${d}/${m}/${y}`;
-                        }
-                        if (!grouped[dateKey]) grouped[dateKey] = [];
-                        grouped[dateKey].push(item);
-                      });
-
-                      return (
-                        <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: '10px', padding: '0.75rem', marginTop: '0.85rem', fontSize: '0.8rem' }}>
-                          <div style={{ fontWeight: '800', color: '#a78bfa', marginBottom: '0.5rem', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>📝 Patient Care Notes</span>
-                            <span style={{ fontSize: '0.7rem', opacity: 0.8, textTransform: 'none', color: '#c4b5fd' }}>Grouped by Date</span>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                            {Object.entries(grouped).map(([dateStr, noteList]) => (
-                              <div key={dateStr} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '0.5rem 0.65rem', border: '1px solid rgba(139,92,246,0.15)' }}>
-                                <div style={{ fontWeight: '700', color: '#fbbf24', fontSize: '0.75rem', marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.2rem' }}>
-                                  📅 Date: {dateStr}
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                  {noteList.map((note, idx) => (
-                                    <div key={idx} style={{ fontSize: '0.78rem', display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
-                                      <span style={{ color: '#a78bfa', fontWeight: '700', whiteSpace: 'nowrap' }}>[{note.time}]</span>
-                                      <span style={{ color: '#f1f5f9' }}>{note.note}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    {/* Patient Care Notes Component (Shows latest 2 notes + Read More modal) */}
+                    {duty.duty_log && (
+                      <CareNotesList
+                        notes={duty.duty_log.care_notes_list}
+                        shiftDate={duty.shift_date}
+                        title="📝 Patient Care Notes"
+                      />
+                    )}
 
                     {duty.status === 'in_progress' && (
                       <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-color)' }}>
@@ -384,21 +422,37 @@ export default function CompanionDashboard({ user }) {
 
                       <h3 style={{ fontWeight: '800', fontSize: '1rem', marginBottom: '0.6rem' }}>{job.ward_name} (HoSZA)</h3>
                       <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7', marginBottom: '1rem' }}>
-                        <p>🗓️ {job.shift_date} · {job.start_time} – {job.end_time}</p>
+                        <p>🗓️ {job.shift_date} · {formatShiftRange(job.start_time, job.end_time)}</p>
                         <p>👴 Patient Age: ~{job.patient_age} yrs</p>
                         <p>📌 {job.task_details}</p>
                       </div>
 
-                      {job.has_applied ? (
-                        job.application_status === 'rejected' ? (
-                          <button disabled style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'not-allowed' }}>
-                            ✕ Application Not Selected by Admin
+                      {job.has_applied && withdrawCountdowns[job.id] > 0 ? (
+                        <div>
+                          <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.35)', borderRadius: '10px', padding: '0.65rem', marginBottom: '0.5rem', textAlign: 'center' }}>
+                            <div style={{ color: '#34d399', fontWeight: '800', fontSize: '0.85rem' }}>⚡ Auto-Assigned! You are confirmed for this duty.</div>
+                            <div style={{ color: '#94a3b8', fontSize: '0.78rem', marginTop: '0.2rem' }}>
+                              Withdraw window closes in: <strong style={{ color: '#fbbf24', fontSize: '1rem' }}>{withdrawCountdowns[job.id]}s</strong>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleWithdraw(job.id)}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}
+                          >
+                            ⬅️ Withdraw Application ({withdrawCountdowns[job.id]}s left)
                           </button>
-                        ) : (
-                          <button disabled style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(51,65,85,0.6)', border: '1px solid #475569', color: '#38bdf8', fontWeight: '700', fontSize: '0.82rem', cursor: 'not-allowed' }}>
-                            ✓ Duty application submitted — Awaiting admin approval
-                          </button>
-                        )
+                        </div>
+                      ) : job.status === 'cancelled' ? (
+                        <div style={{ width: '100%', padding: '0.65rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', textAlign: 'center' }}>
+                          🚫 Duty Cancelled by Admin
+                          <div style={{ fontSize: '0.74rem', fontWeight: '600', opacity: 0.9, marginTop: '0.2rem' }}>
+                            Reason: {job.cancellation_reason || 'Cancelled by Admin'}
+                          </div>
+                        </div>
+                      ) : job.has_applied ? (
+                        <button disabled style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(51,65,85,0.6)', border: '1px solid #475569', color: '#38bdf8', fontWeight: '700', fontSize: '0.82rem', cursor: 'not-allowed' }}>
+                          ⚡ Assigned — Pending Check-In
+                        </button>
                       ) : (
                         <button
                           onClick={() => {
@@ -466,8 +520,10 @@ export default function CompanionDashboard({ user }) {
           <div id="printable-eclaim-slip" className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '520px', padding: '1.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
               <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🏥 HoSZA Hospital Companion Services</div>
-                <h3 style={{ fontWeight: '800', fontSize: '1.15rem', marginTop: '0.2rem' }}>Shift Allowance Statement (E-Claim Slip)</h3>
+                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: selectedClaimDuty.status === 'cancelled' ? '#f87171' : '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🏥 HoSZA Hospital Companion Services</div>
+                <h3 style={{ fontWeight: '800', fontSize: '1.15rem', marginTop: '0.2rem' }}>
+                  {selectedClaimDuty.status === 'cancelled' ? 'Shift Cancellation Payout Statement' : 'Shift Allowance Statement (E-Claim Slip)'}
+                </h3>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }} className="no-print">
                 <button
@@ -484,6 +540,18 @@ export default function CompanionDashboard({ user }) {
               </div>
             </div>
 
+            {selectedClaimDuty.status === 'cancelled' && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.35)', borderRadius: '10px', padding: '0.75rem 1rem', marginBottom: '1.25rem', color: '#f87171', fontSize: '0.83rem', lineHeight: '1.5' }}>
+                <strong style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.2rem' }}>🚫 Shift Cancelled by Admin</strong>
+                <div><strong>Cancellation Reason:</strong> {selectedClaimDuty.cancellation_reason || 'Cancelled by Admin'}</div>
+                <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '0.35rem' }}>
+                  {parseFloat(selectedClaimDuty.actual_total_payout || 0) > 0 
+                    ? `💵 Pay Per Worked Hours Policy: Compensated RM ${selectedClaimDuty.actual_total_payout} for ${selectedClaimDuty.actual_worked_hours || '0.0'} hours worked prior to cancellation.`
+                    : 'ℹ️ Shift cancelled before check-in (RM 0.00 payout).'}
+                </div>
+              </div>
+            )}
+
             <div className="print-border-box" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.85rem', lineHeight: '1.65' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Shift Reference No.:</span>
@@ -499,7 +567,7 @@ export default function CompanionDashboard({ user }) {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Scheduled Shift:</span>
-                <span>{selectedClaimDuty.shift_date} ({selectedClaimDuty.start_time} – {selectedClaimDuty.end_time})</span>
+                <span>{selectedClaimDuty.shift_date} ({formatShiftRange(selectedClaimDuty.start_time, selectedClaimDuty.end_time)})</span>
               </div>
               
               {/* Actual Check-In & Check-Out Timestamps */}

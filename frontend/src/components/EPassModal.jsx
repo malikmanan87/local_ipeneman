@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatShiftRange } from '../utils/formatTime';
 
 export default function EPassModal({ duty, onClose }) {
   if (!duty) return null;
@@ -42,7 +43,7 @@ export default function EPassModal({ duty, onClose }) {
           <p style={{ marginBottom: '0.4rem' }}><strong>Ward Location:</strong> {duty.ward_name} (Bed {duty.bed_number})</p>
           <p style={{ marginBottom: '0.4rem' }}><strong>Patient Name:</strong> {duty.patient_name}</p>
           <p style={{ marginBottom: '0.4rem' }}><strong>Patient Gender:</strong> {duty.patient_gender === 'L' ? 'Male' : 'Female'}</p>
-          <p><strong>Shift Time:</strong> {duty.shift_date} ({duty.start_time} - {duty.end_time})</p>
+          <p><strong>Shift Time:</strong> {duty.shift_date} ({formatShiftRange(duty.start_time, duty.end_time)})</p>
         </div>
 
         <button onClick={onClose} className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem' }}>

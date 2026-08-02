@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { adminAPI } from '../services/api';
+import { formatShiftRange } from '../utils/formatTime';
 
 export default function NurseDashboard({ user }) {
   const [inputPassCode, setInputPassCode] = useState('');
@@ -128,7 +129,7 @@ export default function NurseDashboard({ user }) {
                   <InfoBox label="Companion" value={`${verificationResult.companion?.name} · IC: ${verificationResult.companion?.ic_number}`} />
                   <InfoBox label="Ward" value={`${verificationResult.request?.ward_name} (${verificationResult.request?.bed_number})`} />
                   <InfoBox label="Patient" value={`${verificationResult.request?.patient_name} (${verificationResult.request?.patient_rn})`} />
-                  <InfoBox label="Shift" value={`${verificationResult.request?.shift_date} · ${verificationResult.request?.start_time} – ${verificationResult.request?.end_time}`} />
+                  <InfoBox label="Shift" value={`${verificationResult.request?.shift_date} · ${formatShiftRange(verificationResult.request?.start_time, verificationResult.request?.end_time)}`} />
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
@@ -152,7 +153,7 @@ export default function NurseDashboard({ user }) {
                   <InfoBox label="UniSZA ID" value={verificationResult.companion?.profile?.student_staff_id || 'N/A'} />
                   <InfoBox label="Ward" value={`${verificationResult.request?.ward_name} (${verificationResult.request?.bed_number})`} accent="#f59e0b" />
                   <InfoBox label="Patient (RN)" value={`${verificationResult.request?.patient_name} · ${verificationResult.request?.patient_rn}`} />
-                  <InfoBox label="Shift" value={`${verificationResult.request?.shift_date} · ${verificationResult.request?.start_time} – ${verificationResult.request?.end_time}`} />
+                  <InfoBox label="Shift" value={`${verificationResult.request?.shift_date} · ${formatShiftRange(verificationResult.request?.start_time, verificationResult.request?.end_time)}`} />
                   <div style={{ background: 'rgba(5,150,105,0.12)', border: '1px solid rgba(5,150,105,0.3)', borderRadius: '8px', padding: '0.6rem 0.85rem', fontSize: '0.82rem', color: '#34d399', fontWeight: '700' }}>
                     🔒 Safety Verified: {verificationResult.request?.patient_gender === 'L' ? 'Male Companion → Male Ward' : 'Female Companion → Female Ward'}
                   </div>

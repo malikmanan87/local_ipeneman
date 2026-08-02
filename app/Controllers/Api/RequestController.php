@@ -155,6 +155,7 @@ class RequestController extends ResourceController
     /**
      * Get available jobs for companions
      * CRITICAL SAFETY RULE: Filter strictly by Companion's Gender!
+     * Also excludes expired shifts (shift end time has passed).
      */
     public function availableJobs()
     {
@@ -167,10 +168,12 @@ class RequestController extends ResourceController
 
         $requestModel = new RequestModel();
         $appModel     = new ApplicationModel();
+        $nowDatetime  = date('Y-m-d H:i:s');
 
-        // Strictly filter: Only show patient requests with the EXACT SAME GENDER
+        // Strictly filter: Only same gender, only open, not yet expired
         $jobs = $requestModel->where('patient_gender', $gender)
                             ->where('status', 'open')
+                            ->where('CONCAT(shift_date, \' \', end_time) >', $nowDatetime)
                             ->orderBy('shift_date', 'ASC')
                             ->findAll();
 
@@ -178,17 +181,63 @@ class RequestController extends ResourceController
             foreach ($jobs as &$job) {
                 $app = $appModel->where('request_id', $job['id'])
                                 ->where('companion_id', $companionId)
+                                ->whereNotIn('status', ['withdrawn'])
                                 ->first();
                 $job['has_applied'] = $app ? true : false;
                 $job['application_status'] = $app ? $app['status'] : null;
+                $job['applied_at'] = $app ? ($app['applied_at'] ?? null) : null;
             }
         }
 
         return $this->respond([
-            'status' => 200,
+            'status'        => 200,
             'gender_filter' => $gender === 'L' ? 'Male Companion only' : 'Female Companion only',
-            'total'  => count($jobs),
-            'data'   => $jobs
+            'total'         => count($jobs),
+            'data'          => $jobs
+        ]);
+    }
+
+    /**
+     * Auto-expire open/assigned requests where shift end_time has passed
+     * Called lazily on Companion & Patient dashboard load
+     */
+    public function autoExpireRequests()
+    {
+        $requestModel = new RequestModel();
+        $dutyLogModel = new \App\Models\DutyLogModel();
+        $nowDatetime  = date('Y-m-d H:i:s');
+
+        // Find open or assigned requests where shift end time has passed
+        $expiredRequests = $requestModel
+            ->whereIn('status', ['open', 'assigned'])
+            ->where('CONCAT(shift_date, \' \', end_time) <=', $nowDatetime)
+            ->findAll();
+
+        $expiredCount = 0;
+        foreach ($expiredRequests as $req) {
+            $requestModel->update($req['id'], [
+                'status' => 'expired'
+            ]);
+
+            // Log audit note if there was a duty log (assigned but never checked in)
+            if (!empty($req['assigned_companion_id'])) {
+                $log = $dutyLogModel->where('request_id', $req['id'])->first();
+                if ($log && empty($log['check_out'])) {
+                    $dutyLogModel->update($log['id'], [
+                        'check_out'           => $nowDatetime,
+                        'actual_worked_hours'  => 0.0,
+                        'actual_total_payout'  => 0.00,
+                        'care_notes'           => trim(($log['care_notes'] ?? '') . "\n[" . date('h:i A') . "] ⌛ Shift expired — companion was assigned but never checked in. Payout: RM 0.00.")
+                    ]);
+                }
+            }
+            $expiredCount++;
+        }
+
+        return $this->respond([
+            'status'        => 200,
+            'expired_count' => $expiredCount,
+            'message'       => "$expiredCount request(s) auto-expired."
         ]);
     }
 
@@ -389,6 +438,107 @@ class RequestController extends ResourceController
         return $this->respond([
             'status'  => 200,
             'message' => 'Companion application rejected.'
+        ]);
+    }
+
+    /**
+     * Cancel a request by Admin (applies to 'open', 'assigned', or 'in_progress')
+     * Option B Enforcement: If 'in_progress', logs check-out and sets actual_total_payout = 0.00
+     */
+    public function cancelRequest()
+    {
+        $requestId = $this->request->getVar('request_id');
+        $reason    = $this->request->getVar('reason') ?: 'Cancelled by Admin';
+
+        if (!$requestId) {
+            return $this->failValidationError('request_id is required.');
+        }
+
+        $requestModel = new RequestModel();
+        $appModel     = new ApplicationModel();
+        $dutyLogModel = new \App\Models\DutyLogModel();
+
+        $req = $requestModel->find($requestId);
+        if (!$req) {
+            return $this->failNotFound('Request not found.');
+        }
+
+        if ($req['status'] === 'completed') {
+            return $this->failValidationError('Completed shifts cannot be cancelled.');
+        }
+
+        // Ensure cancellation_reason column exists in requests table
+        $db = \Config\Database::connect();
+        try {
+            $db->query("ALTER TABLE requests ADD COLUMN cancellation_reason TEXT NULL AFTER status");
+        } catch (\Throwable $e) { /* Column already exists */ }
+
+        $isZeroPayoutOverride = filter_var($this->request->getVar('zero_payout'), FILTER_VALIDATE_BOOLEAN);
+        $settingModel = new \App\Models\SettingModel();
+        $defaultHourlyRate = floatval($settingModel->getVal('default_hourly_rate', '10.00'));
+
+        // If in_progress or assigned, handle duty log check-out & pro-rated payout calculation
+        if ($req['status'] === 'in_progress' || $req['status'] === 'assigned') {
+            $dutyLog = $dutyLogModel->where('request_id', $requestId)->first();
+            if ($dutyLog) {
+                $workedHours  = 0.0;
+                $actualPayout = 0.00;
+                $noteMessage  = '';
+
+                if ($req['status'] === 'in_progress' && !empty($dutyLog['check_in']) && !$isZeroPayoutOverride) {
+                    $checkInTs  = strtotime($dutyLog['check_in']);
+                    $nowTs      = time();
+                    $workedSecs = max(60, $nowTs - $checkInTs);
+                    $workedHours = round($workedSecs / 3600, 2);
+
+                    // Determine hourly rate
+                    $hourlyRate = $defaultHourlyRate;
+                    if (!empty($req['shift_date']) && !empty($req['start_time']) && !empty($req['end_time'])) {
+                        $sTs = strtotime($req['shift_date'] . ' ' . $req['start_time']);
+                        $eTs = strtotime($req['shift_date'] . ' ' . $req['end_time']);
+                        $schedHours = max(1, round(($eTs - $sTs) / 3600, 2));
+                        if (floatval($req['allowance_amount'] ?? 0) > 0 && $schedHours > 0) {
+                            $hourlyRate = floatval($req['allowance_amount']) / $schedHours;
+                        }
+                    }
+
+                    $tipAmount       = floatval($req['tip_amount'] ?? 0);
+                    $allowanceEarned = round($workedHours * $hourlyRate, 2);
+                    $actualPayout    = round($allowanceEarned + $tipAmount, 2);
+                    $noteMessage     = "\n[" . date('h:i A') . "] 🚫 Shift cancelled by Admin. Reason: \"" . $reason . "\". Pro-rated payout logged: RM " . number_format($actualPayout, 2) . " for " . $workedHours . " hrs worked.";
+                } else if ($isZeroPayoutOverride) {
+                    $workedHours  = 0.0;
+                    $actualPayout = 0.00;
+                    $noteMessage  = "\n[" . date('h:i A') . "] 🚫 Shift cancelled by Admin. Reason: \"" . $reason . "\" (Zero Payout Override: Policy Violation).";
+                } else {
+                    $workedHours  = 0.0;
+                    $actualPayout = 0.00;
+                    $noteMessage  = "\n[" . date('h:i A') . "] 🚫 Shift cancelled by Admin before check-in. Reason: \"" . $reason . "\".";
+                }
+
+                $dutyLogModel->update($dutyLog['id'], [
+                    'check_out'           => date('Y-m-d H:i:s'),
+                    'actual_worked_hours' => $workedHours,
+                    'actual_total_payout' => $actualPayout,
+                    'care_notes'          => trim(($dutyLog['care_notes'] ?? '') . $noteMessage)
+                ]);
+            }
+        }
+
+        // Update request status & cancellation_reason
+        $requestModel->update($requestId, [
+            'status'              => 'cancelled',
+            'cancellation_reason' => $reason
+        ]);
+
+        // Auto-reject any pending or accepted applications for this request
+        $appModel->where('request_id', $requestId)
+                 ->set(['status' => 'rejected'])
+                 ->update();
+
+        return $this->respond([
+            'status'  => 200,
+            'message' => 'Request cancelled by Admin. Pro-rated payout logged for companion based on worked hours.'
         ]);
     }
 

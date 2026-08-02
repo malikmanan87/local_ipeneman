@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { authAPI } from '../services/api';
+import { showSuccess } from '../utils/swal';
 
 export default function Register({ onRegisterSuccess, switchToLogin }) {
   const [formData, setFormData] = useState({
@@ -35,7 +36,7 @@ export default function Register({ onRegisterSuccess, switchToLogin }) {
     try {
       const res = await authAPI.register(formData);
       if (res.status === 201 || res.data.status === 201 || res.data.message) {
-        alert('✓ ' + (res.data.message || 'Registration submitted successfully! Awaiting Admin approval before login.'));
+        await showSuccess('Registration Submitted', res.data.message || 'Registration submitted successfully! Awaiting Admin approval before login.');
         switchToLogin();
       }
     } catch (err) {

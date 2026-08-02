@@ -20,16 +20,17 @@ export const authAPI = {
 export const requestAPI = {
   create: (data) => api.post('/requests/create', data),
   update: (id, data) => api.post(`/requests/update/${id}`, data),
-  getAvailable: (gender, companionId) => api.get(`/requests/available?gender=${gender}${companionId ? `&companion_id=${companionId}` : ''}`),
+  getAvailable: (gender, companionId) => api.get(`/requests/available?gender=${gender}&companion_id=${companionId}`),
   getMyRequests: (userId) => api.get(`/requests/my/${userId}`),
   getApplicants: (requestId) => api.get(`/requests/applicants/${requestId}`),
-  acceptCompanion: (data) => api.post('/requests/accept-companion', data),
-  rejectCompanion: (data) => api.post('/requests/reject-companion', data),
+  cancel: (data) => api.post('/requests/cancel', data),
   rateCompanion: (data) => api.post('/requests/rate-companion', data),
+  autoExpire: () => api.post('/requests/auto-expire'),
 };
 
 export const companionAPI = {
   applyJob: (data) => api.post('/companion/apply', data),
+  withdrawApplication: (data) => api.post('/companion/withdraw', data),
   getMyDuties: (companionId) => api.get(`/companion/duties/${companionId}`),
   checkIn: (data) => api.post('/companion/check-in', data),
   checkOut: (data) => api.post('/companion/check-out', data),
@@ -45,6 +46,7 @@ export const adminAPI = {
   verifyPass: (passCode, staffUserId) => api.post('/admin/verify-pass', { pass_code: passCode, staff_user_id: staffUserId }),
   getUnverifiedUsers: () => api.get('/admin/unverified-users'),
   getAllUsers: () => api.get('/admin/all-users'),
+  toggleUserStatus: (userId, status) => api.post('/admin/toggle-user-status', { user_id: userId, status }),
   verifyUser: (userId) => api.post('/admin/verify-user', { user_id: userId }),
   rejectUser: (userId) => api.post('/admin/reject-user', { user_id: userId }),
 };

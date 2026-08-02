@@ -15,6 +15,8 @@ class DutyLogModel extends Model
         'companion_id',
         'check_in',
         'check_out',
+        'actual_worked_hours',
+        'actual_total_payout',
         'care_notes',
         'qr_token',
         'is_pass_scanned',

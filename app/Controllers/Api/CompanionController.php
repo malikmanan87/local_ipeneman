@@ -91,10 +91,10 @@ class CompanionController extends ResourceController
         // Ensure applied_at column exists
         $db = \Config\Database::connect();
         try {
-            $db->query("ALTER TABLE companion_applications ADD COLUMN applied_at DATETIME NULL AFTER status");
+            $db->query("ALTER TABLE applications ADD COLUMN applied_at DATETIME NULL AFTER status");
         } catch (\Throwable $e) { /* Column already exists */ }
         try {
-            $db->query("ALTER TABLE companion_applications ADD COLUMN withdrawn_at DATETIME NULL AFTER applied_at");
+            $db->query("ALTER TABLE applications ADD COLUMN withdrawn_at DATETIME NULL AFTER applied_at");
         } catch (\Throwable $e) { /* Column already exists */ }
 
         $appliedAt = date('Y-m-d H:i:s');

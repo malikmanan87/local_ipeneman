@@ -146,11 +146,20 @@ export default function CompanionDashboard({ user }) {
   };
 
   const handleCheckIn = async (requestId) => {
+    const confirmed = await showConfirm(
+      'Check In at Ward?',
+      'Are you present at HoSZA Ward and ready to start your duty shift?',
+      'Yes, Check In Now',
+      'question'
+    );
+    if (!confirmed) return;
     try {
       await companionAPI.checkIn({ request_id: requestId, companion_id: user.id });
-      await showSuccess('Checked In', 'Checked in successfully at HoSZA Ward!');
+      await showSuccess('Checked In!', 'Checked in successfully at HoSZA Ward. Shift session started.');
       fetchCompanionData();
-    } catch (err) { showError('Check-in Failed', 'Could not complete check-in.'); }
+    } catch (err) {
+      showError('Check-in Failed', err.response?.data?.messages?.error || err.response?.data?.message || 'Could not complete check-in.');
+    }
   };
 
   const handleCheckOut = async (requestId) => {

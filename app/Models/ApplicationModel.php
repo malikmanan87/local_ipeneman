@@ -13,7 +13,9 @@ class ApplicationModel extends Model
     protected $allowedFields    = [
         'request_id',
         'companion_id',
-        'status'
+        'status',
+        'applied_at',
+        'withdrawn_at'
     ];
 
     protected $useTimestamps = true;

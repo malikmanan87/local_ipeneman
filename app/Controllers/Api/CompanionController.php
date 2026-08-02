@@ -142,7 +142,7 @@ class CompanionController extends ResourceController
             'request_id'   => $requestId,
             'companion_id' => $companionId,
             'check_in'     => $nowTime,
-            'care_notes'   => json_encode([['time' => date('H:i'), 'note' => 'Companion checked in at HoSZA Ward (' . date('d/m/Y H:i') . ')']]),
+            'care_notes'   => json_encode([['date' => date('Y-m-d'), 'time' => date('H:i'), 'note' => 'Companion checked in at HoSZA Ward (' . date('d/m/Y H:i') . ')']]),
             'qr_token'     => $qrToken
         ]);
 
@@ -199,6 +199,7 @@ class CompanionController extends ResourceController
                 : 'Companion checked out & completed duty shift at HoSZA Ward (' . date('d/m/Y H:i') . '). Total duration: ' . $workedHours . ' hrs';
 
             $existingNotes[] = [
+                'date' => date('Y-m-d'),
                 'time' => date('H:i'),
                 'note' => $noteText
             ];
@@ -238,6 +239,7 @@ class CompanionController extends ResourceController
 
         $existingNotes = json_decode($log['care_notes'], true) ?? [];
         $existingNotes[] = [
+            'date' => date('Y-m-d'),
             'time' => date('H:i'),
             'note' => $note
         ];

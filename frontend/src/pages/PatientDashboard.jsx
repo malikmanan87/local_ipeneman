@@ -274,20 +274,49 @@ export default function PatientDashboard({ user }) {
                       <div style={{ color: '#34d399', fontWeight: '800', marginTop: '0.2rem' }}>💵 Total: RM {totalAmt.toFixed(2)}</div>
                     </div>
 
-                    {/* Patient Care Notes (Visible to Patient/Family) */}
-                    {req.duty_log && req.duty_log.care_notes_list && req.duty_log.care_notes_list.length > 0 && (
-                      <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: '10px', padding: '0.75rem', marginBottom: '0.75rem', fontSize: '0.8rem' }}>
-                        <div style={{ fontWeight: '700', color: '#a78bfa', marginBottom: '0.4rem', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>📝 Patient Care Notes (Live Logs)</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                          {req.duty_log.care_notes_list.map((note, idx) => (
-                            <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem' }}>
-                              <span style={{ color: '#a78bfa', fontWeight: '700', marginRight: '0.4rem' }}>[{note.time}]</span>
-                              <span style={{ color: '#f1f5f9' }}>{note.note}</span>
-                            </div>
-                          ))}
+                    {/* Patient Care Notes (Visible to Patient/Family, Grouped by Date Category) */}
+                    {req.duty_log && req.duty_log.care_notes_list && req.duty_log.care_notes_list.length > 0 && (() => {
+                      const grouped = {};
+                      req.duty_log.care_notes_list.forEach(item => {
+                        let dateKey = item.date;
+                        if (!dateKey) {
+                          const m = item.note && item.note.match(/(\d{2}\/\d{2}\/\d{4})/);
+                          dateKey = m ? m[1] : (req.shift_date || 'Care Log');
+                        }
+                        if (dateKey.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                          const [y, m, d] = dateKey.split('-');
+                          dateKey = `${d}/${m}/${y}`;
+                        }
+                        if (!grouped[dateKey]) grouped[dateKey] = [];
+                        grouped[dateKey].push(item);
+                      });
+
+                      return (
+                        <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: '10px', padding: '0.75rem', marginBottom: '0.75rem', fontSize: '0.8rem' }}>
+                          <div style={{ fontWeight: '800', color: '#a78bfa', marginBottom: '0.5rem', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>📝 Patient Care Notes (Live Logs)</span>
+                            <span style={{ fontSize: '0.7rem', opacity: 0.8, textTransform: 'none', color: '#c4b5fd' }}>Grouped by Date</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                            {Object.entries(grouped).map(([dateStr, noteList]) => (
+                              <div key={dateStr} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '0.5rem 0.65rem', border: '1px solid rgba(139,92,246,0.15)' }}>
+                                <div style={{ fontWeight: '700', color: '#fbbf24', fontSize: '0.75rem', marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.2rem' }}>
+                                  📅 Date: {dateStr}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                  {noteList.map((note, idx) => (
+                                    <div key={idx} style={{ fontSize: '0.78rem', display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
+                                      <span style={{ color: '#a78bfa', fontWeight: '700', whiteSpace: 'nowrap' }}>[{note.time}]</span>
+                                      <span style={{ color: '#f1f5f9' }}>{note.note}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {req.user_rating && (
                       <div style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', padding: '0.5rem 0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: '#fbbf24', marginBottom: '0.5rem' }}>

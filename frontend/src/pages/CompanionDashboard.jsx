@@ -257,20 +257,49 @@ export default function CompanionDashboard({ user }) {
                       )}
                     </div>
 
-                    {/* Care Note Input & Log */}
-                    {duty.duty_log && duty.duty_log.care_notes_list && duty.duty_log.care_notes_list.length > 0 && (
-                      <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: '10px', padding: '0.75rem', marginTop: '0.85rem', fontSize: '0.8rem' }}>
-                        <div style={{ fontWeight: '700', color: '#a78bfa', marginBottom: '0.4rem', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>📝 Patient Care Notes (Logged)</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                          {duty.duty_log.care_notes_list.map((note, idx) => (
-                            <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem' }}>
-                              <span style={{ color: '#a78bfa', fontWeight: '700', marginRight: '0.4rem' }}>[{note.time}]</span>
-                              <span style={{ color: '#f1f5f9' }}>{note.note}</span>
-                            </div>
-                          ))}
+                    {/* Care Note Input & Log (Grouped by Date Category) */}
+                    {duty.duty_log && duty.duty_log.care_notes_list && duty.duty_log.care_notes_list.length > 0 && (() => {
+                      const grouped = {};
+                      duty.duty_log.care_notes_list.forEach(item => {
+                        let dateKey = item.date;
+                        if (!dateKey) {
+                          const m = item.note && item.note.match(/(\d{2}\/\d{2}\/\d{4})/);
+                          dateKey = m ? m[1] : (duty.shift_date || 'Care Log');
+                        }
+                        if (dateKey.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                          const [y, m, d] = dateKey.split('-');
+                          dateKey = `${d}/${m}/${y}`;
+                        }
+                        if (!grouped[dateKey]) grouped[dateKey] = [];
+                        grouped[dateKey].push(item);
+                      });
+
+                      return (
+                        <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: '10px', padding: '0.75rem', marginTop: '0.85rem', fontSize: '0.8rem' }}>
+                          <div style={{ fontWeight: '800', color: '#a78bfa', marginBottom: '0.5rem', fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>📝 Patient Care Notes</span>
+                            <span style={{ fontSize: '0.7rem', opacity: 0.8, textTransform: 'none', color: '#c4b5fd' }}>Grouped by Date</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                            {Object.entries(grouped).map(([dateStr, noteList]) => (
+                              <div key={dateStr} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '0.5rem 0.65rem', border: '1px solid rgba(139,92,246,0.15)' }}>
+                                <div style={{ fontWeight: '700', color: '#fbbf24', fontSize: '0.75rem', marginBottom: '0.35rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.2rem' }}>
+                                  📅 Date: {dateStr}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                  {noteList.map((note, idx) => (
+                                    <div key={idx} style={{ fontSize: '0.78rem', display: 'flex', gap: '0.4rem', alignItems: 'flex-start' }}>
+                                      <span style={{ color: '#a78bfa', fontWeight: '700', whiteSpace: 'nowrap' }}>[{note.time}]</span>
+                                      <span style={{ color: '#f1f5f9' }}>{note.note}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {duty.status === 'in_progress' && (
                       <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-color)' }}>

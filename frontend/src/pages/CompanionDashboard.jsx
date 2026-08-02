@@ -507,19 +507,25 @@ export default function CompanionDashboard({ user }) {
                   <strong style={{ color: '#f87171' }}>{selectedClaimDuty.duty_log?.check_out ? selectedClaimDuty.duty_log.check_out : '—'}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Actual Hours Worked:</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Actual Logged Duration:</span>
                   <strong style={{ color: '#38bdf8' }}>{selectedClaimDuty.actual_worked_hours || selectedClaimDuty.scheduled_hours} Hours</strong>
                 </div>
+                {selectedClaimDuty.billable_hours && selectedClaimDuty.billable_hours < selectedClaimDuty.actual_worked_hours && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem', color: '#f59e0b', fontSize: '0.78rem' }}>
+                    <span>Billable Hours (Auto-Capped):</span>
+                    <strong>{selectedClaimDuty.billable_hours} Hours</strong>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Financial Breakdown (Based on Actual Hours Worked) */}
+            {/* Financial Breakdown (Based on Billable Hours) */}
             <div className="print-border-box" style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.86rem' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.6rem' }}>
-                💰 Claim Based on Actual Worked Hours (RM {selectedClaimDuty.hourly_rate || '10.00'}/hr)
+                💰 Claim Payout ({selectedClaimDuty.billable_hours || selectedClaimDuty.actual_worked_hours || selectedClaimDuty.scheduled_hours} Paid Hrs @ RM {selectedClaimDuty.hourly_rate || '10.00'}/hr)
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                <span>Base Allowance ({selectedClaimDuty.actual_worked_hours || selectedClaimDuty.scheduled_hours} hrs):</span>
+                <span>Base Shift Payout:</span>
                 <span>RM {selectedClaimDuty.actual_allowance_amount || selectedClaimDuty.allowance_amount}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem', color: '#fbbf24' }}>

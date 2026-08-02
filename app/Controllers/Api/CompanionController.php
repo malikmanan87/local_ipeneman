@@ -88,9 +88,13 @@ class CompanionController extends ResourceController
                 $d['duty_log'] = null;
             }
 
-            // Calculate actual worked hours & pro-rated claim allowance based on actual check-in & check-out
+            // Calculate actual worked hours, billable hours (capped at shift duration), & allowance
             $scheduledStart = strtotime($d['shift_date'] . ' ' . $d['start_time']);
             $scheduledEnd   = strtotime($d['shift_date'] . ' ' . $d['end_time']);
+            if ($scheduledEnd < $scheduledStart) {
+                // Overnight shift ending next day (e.g. 22:00 to 06:00)
+                $scheduledEnd += 86400;
+            }
             $scheduledSecs  = max(3600, $scheduledEnd - $scheduledStart);
             $scheduledHours = max(1, round($scheduledSecs / 3600, 2));
 
@@ -99,6 +103,7 @@ class CompanionController extends ResourceController
             $hourlyRate    = $allowanceBase / $scheduledHours;
 
             $actualWorkedHours = $scheduledHours;
+            $billableHours     = $scheduledHours;
             $actualAllowance   = $allowanceBase;
 
             if ($log && !empty($log['check_in']) && !empty($log['check_out'])) {
@@ -107,15 +112,14 @@ class CompanionController extends ResourceController
                 $workedSecs = max(60, $checkOutTs - $checkInTs);
                 $actualWorkedHours = round($workedSecs / 3600, 2);
 
-                if ($actualWorkedHours < $scheduledHours) {
-                    $actualAllowance = round($actualWorkedHours * $hourlyRate, 2);
-                } else {
-                    $actualAllowance = $allowanceBase;
-                }
+                // Auto-cap billable hours at scheduled shift duration (no extra charge for late/forgotten clock-outs)
+                $billableHours   = min($actualWorkedHours, $scheduledHours);
+                $actualAllowance = round($billableHours * $hourlyRate, 2);
             }
 
             $d['scheduled_hours']         = $scheduledHours;
             $d['actual_worked_hours']     = $actualWorkedHours;
+            $d['billable_hours']          = $billableHours;
             $d['actual_allowance_amount'] = number_format($actualAllowance, 2, '.', '');
             $d['actual_total_payout']     = number_format($actualAllowance + $tipAmount, 2, '.', '');
             $d['hourly_rate']             = number_format($hourlyRate, 2, '.', '');

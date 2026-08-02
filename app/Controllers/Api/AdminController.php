@@ -110,9 +110,13 @@ class AdminController extends ResourceController
             $rating = $ratingModel->where('request_id', $req['id'])->first();
             $req['rating'] = $rating ?: null;
 
-            // Calculate actual worked hours & pro-rated claim allowance
+            // Calculate actual worked hours, billable hours (capped at shift duration), & allowance
             $scheduledStart = strtotime($req['shift_date'] . ' ' . $req['start_time']);
             $scheduledEnd   = strtotime($req['shift_date'] . ' ' . $req['end_time']);
+            if ($scheduledEnd < $scheduledStart) {
+                // Overnight shift ending next day (e.g. 22:00 to 06:00)
+                $scheduledEnd += 86400;
+            }
             $scheduledSecs  = max(3600, $scheduledEnd - $scheduledStart);
             $scheduledHours = max(1, round($scheduledSecs / 3600, 2));
 
@@ -121,6 +125,7 @@ class AdminController extends ResourceController
             $hourlyRate    = $allowanceBase / $scheduledHours;
 
             $actualWorkedHours = $scheduledHours;
+            $billableHours     = $scheduledHours;
             $actualAllowance   = $allowanceBase;
 
             if ($dutyLog && !empty($dutyLog['check_in']) && !empty($dutyLog['check_out'])) {
@@ -129,15 +134,14 @@ class AdminController extends ResourceController
                 $workedSecs = max(60, $checkOutTs - $checkInTs);
                 $actualWorkedHours = round($workedSecs / 3600, 2);
 
-                if ($actualWorkedHours < $scheduledHours) {
-                    $actualAllowance = round($actualWorkedHours * $hourlyRate, 2);
-                } else {
-                    $actualAllowance = $allowanceBase;
-                }
+                // Auto-cap billable hours at scheduled shift duration (no extra charge for late/forgotten clock-outs)
+                $billableHours   = min($actualWorkedHours, $scheduledHours);
+                $actualAllowance = round($billableHours * $hourlyRate, 2);
             }
 
             $req['scheduled_hours']         = $scheduledHours;
             $req['actual_worked_hours']     = $actualWorkedHours;
+            $req['billable_hours']          = $billableHours;
             $req['actual_allowance_amount'] = number_format($actualAllowance, 2, '.', '');
             $req['actual_total_payout']     = number_format($actualAllowance + $tipAmount, 2, '.', '');
             $req['hourly_rate']             = number_format($hourlyRate, 2, '.', '');

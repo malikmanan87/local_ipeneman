@@ -372,6 +372,27 @@ class RequestController extends ResourceController
     }
 
     /**
+     * Reject a specific companion application for a request
+     */
+    public function rejectCompanion()
+    {
+        $requestId   = $this->request->getVar('request_id');
+        $companionId = $this->request->getVar('companion_id');
+
+        $appModel = new ApplicationModel();
+
+        $appModel->where('request_id', $requestId)
+                 ->where('companion_id', $companionId)
+                 ->set(['status' => 'rejected'])
+                 ->update();
+
+        return $this->respond([
+            'status'  => 200,
+            'message' => 'Companion application rejected.'
+        ]);
+    }
+
+    /**
      * Get list of companion applicants for a specific request
      */
     public function getApplicants($requestId = null)

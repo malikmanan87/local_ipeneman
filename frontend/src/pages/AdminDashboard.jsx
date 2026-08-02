@@ -176,8 +176,21 @@ export default function AdminDashboard({ user }) {
   const handleApproveApplicant = async (companionId) => {
     try {
       await requestAPI.acceptCompanion({ request_id: selectedRequest.id, companion_id: companionId });
+      alert('✓ Companion assigned successfully!');
       setShowApplicantsModal(false); fetchData();
     } catch { alert('Failed to assign companion.'); }
+  };
+
+  const handleRejectApplicant = async (companionId) => {
+    if (!window.confirm('Reject this companion applicant?')) return;
+    try {
+      await requestAPI.rejectCompanion({ request_id: selectedRequest.id, companion_id: companionId });
+      alert('✓ Companion applicant rejected.');
+      // Refresh applicants list
+      const res = await requestAPI.getApplicants(selectedRequest.id);
+      setApplicants(res.data.data || []);
+      fetchData();
+    } catch { alert('Failed to reject companion application.'); }
   };
 
   const handleSaveSettings = async (e) => {
@@ -895,7 +908,20 @@ export default function AdminDashboard({ user }) {
                     {comp.companion_profile?.student_staff_id && <span> · 🎓 {comp.companion_profile.student_staff_id}</span>}
                   </div>
                 </div>
-                <button onClick={() => handleApproveApplicant(comp.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>✓ Assign</button>
+                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                  <button onClick={() => handleApproveApplicant(comp.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}>
+                    ✓ Assign
+                  </button>
+                  <button
+                    onClick={() => handleRejectApplicant(comp.id)}
+                    style={{
+                      padding: '0.45rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.4)',
+                      background: 'rgba(248,113,113,0.1)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer'
+                    }}
+                  >
+                    ✕ Reject
+                  </button>
+                </div>
               </div>
             ))}
           </div>

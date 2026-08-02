@@ -24,6 +24,7 @@ export const requestAPI = {
   getMyRequests: (userId) => api.get(`/requests/my/${userId}`),
   getApplicants: (requestId) => api.get(`/requests/applicants/${requestId}`),
   acceptCompanion: (data) => api.post('/requests/accept-companion', data),
+  rejectCompanion: (data) => api.post('/requests/reject-companion', data),
   rateCompanion: (data) => api.post('/requests/rate-companion', data),
 };
 

@@ -175,13 +175,13 @@ export default function CompanionDashboard({ user }) {
                     <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
                       <p>🛏️ Bed: <strong style={{ color: '#f1f5f9' }}>{duty.bed_number}</strong></p>
                       <p>👴 Patient: <strong style={{ color: '#f1f5f9' }}>{duty.patient_name}</strong> (Age {duty.patient_age})</p>
-                      <p>🗓️ Shift Dijadualkan: {duty.shift_date} ({duty.start_time} – {duty.end_time})</p>
+                      <p>🗓️ Scheduled Shift: {duty.shift_date} ({duty.start_time} – {duty.end_time})</p>
                       {duty.duty_log && (duty.duty_log.check_in || duty.duty_log.check_out) && (
                         <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.75rem', borderRadius: '8px', marginTop: '0.4rem', marginBottom: '0.4rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                          <p style={{ color: '#38bdf8', fontWeight: '700', fontSize: '0.78rem' }}>🕒 Rekod Waktu Sebenar:</p>
+                          <p style={{ color: '#38bdf8', fontWeight: '700', fontSize: '0.78rem' }}>🕒 Actual Time Record:</p>
                           <p style={{ fontSize: '0.76rem' }}>Check-In: <strong style={{ color: '#34d399' }}>{duty.duty_log.check_in || '—'}</strong></p>
                           <p style={{ fontSize: '0.76rem' }}>Check-Out: <strong style={{ color: '#f87171' }}>{duty.duty_log.check_out || '—'}</strong></p>
-                          <p style={{ fontSize: '0.76rem', color: '#fbbf24', fontWeight: '700', marginTop: '0.15rem' }}>⏱️ Jam Kerja Sebenar: {duty.actual_worked_hours} jam</p>
+                          <p style={{ fontSize: '0.76rem', color: '#fbbf24', fontWeight: '700', marginTop: '0.15rem' }}>⏱️ Actual Worked Hours: {duty.actual_worked_hours} hrs</p>
                         </div>
                       )}
                       <p style={{ marginTop: '0.25rem' }}>📌 {duty.task_details}</p>
@@ -210,7 +210,7 @@ export default function CompanionDashboard({ user }) {
                           onClick={() => { setSelectedClaimDuty(duty); setShowClaimModal(true); }}
                           style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.12)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
                         >
-                          🧾 Resit E-Claim (RM {duty.actual_total_payout || (parseFloat(duty.allowance_amount || 0) + parseFloat(duty.tip_amount || 0)).toFixed(2)})
+                          🧾 E-Claim Receipt (RM {duty.actual_total_payout || (parseFloat(duty.allowance_amount || 0) + parseFloat(duty.tip_amount || 0)).toFixed(2)})
                         </button>
                       )}
                     </div>
@@ -354,7 +354,7 @@ export default function CompanionDashboard({ user }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
               <div>
                 <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🏥 HoSZA Hospital Companion Services</div>
-                <h3 style={{ fontWeight: '800', fontSize: '1.15rem', marginTop: '0.2rem' }}>Penyata Tuntutan Elaun Shift (E-Claim Slip)</h3>
+                <h3 style={{ fontWeight: '800', fontSize: '1.15rem', marginTop: '0.2rem' }}>Shift Allowance Statement (E-Claim Slip)</h3>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }} className="no-print">
                 <button
@@ -365,7 +365,7 @@ export default function CompanionDashboard({ user }) {
                     fontWeight: '800', fontSize: '0.8rem', cursor: 'pointer'
                   }}
                 >
-                  🖨️ Cetak / Simpan PDF
+                  🖨️ Print / Save PDF
                 </button>
                 <button onClick={() => setShowClaimModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
               </div>
@@ -373,35 +373,35 @@ export default function CompanionDashboard({ user }) {
 
             <div className="print-border-box" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.85rem', lineHeight: '1.65' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>No. Rujukan Shift:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Shift Reference No.:</span>
                 <strong style={{ color: '#f59e0b', fontFamily: 'monospace' }}>{selectedClaimDuty.request_code}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Peneman:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Companion:</span>
                 <strong style={{ color: '#f1f5f9' }}>{user.name} ({user.ic_number})</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Wad & Katil:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Ward & Bed:</span>
                 <span>{selectedClaimDuty.ward_name} ({selectedClaimDuty.bed_number})</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Shift Dijadualkan:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Scheduled Shift:</span>
                 <span>{selectedClaimDuty.shift_date} ({selectedClaimDuty.start_time} – {selectedClaimDuty.end_time})</span>
               </div>
               
               {/* Actual Check-In & Check-Out Timestamps */}
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Waktu Check-In Sebenar:</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Actual Check-In Time:</span>
                   <strong style={{ color: '#34d399' }}>{selectedClaimDuty.duty_log?.check_in ? selectedClaimDuty.duty_log.check_in : '—'}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Waktu Check-Out Sebenar:</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Actual Check-Out Time:</span>
                   <strong style={{ color: '#f87171' }}>{selectedClaimDuty.duty_log?.check_out ? selectedClaimDuty.duty_log.check_out : '—'}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Jumlah Jam Kerja Sebenar:</span>
-                  <strong style={{ color: '#38bdf8' }}>{selectedClaimDuty.actual_worked_hours || selectedClaimDuty.scheduled_hours} Jam</strong>
+                  <span style={{ color: 'var(--text-muted)' }}>Actual Hours Worked:</span>
+                  <strong style={{ color: '#38bdf8' }}>{selectedClaimDuty.actual_worked_hours || selectedClaimDuty.scheduled_hours} Hours</strong>
                 </div>
               </div>
             </div>
@@ -409,24 +409,24 @@ export default function CompanionDashboard({ user }) {
             {/* Financial Breakdown (Based on Actual Hours Worked) */}
             <div className="print-border-box" style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.86rem' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.6rem' }}>
-                💰 Tuntutan Berdasarkan Jam Kerja Sebenar (RM {selectedClaimDuty.hourly_rate || '10.00'}/jam)
+                💰 Claim Based on Actual Worked Hours (RM {selectedClaimDuty.hourly_rate || '10.00'}/hr)
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                <span>Elaun Asas ({selectedClaimDuty.actual_worked_hours || selectedClaimDuty.scheduled_hours} jam):</span>
+                <span>Base Allowance ({selectedClaimDuty.actual_worked_hours || selectedClaimDuty.scheduled_hours} hrs):</span>
                 <span>RM {selectedClaimDuty.actual_allowance_amount || selectedClaimDuty.allowance_amount}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.65rem', color: '#fbbf24' }}>
-                <span>Tips / Bonus Waris:</span>
+                <span>Family Tip / Bonus:</span>
                 <span>+ RM {parseFloat(selectedClaimDuty.tip_amount || 0).toFixed(2)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.1)', fontWeight: '900', fontSize: '1.05rem', color: '#34d399' }}>
-                <span>JUMLAH TUNTUTAN SEBENAR:</span>
+                <span>TOTAL ACTUAL CLAIM:</span>
                 <span>RM {selectedClaimDuty.actual_total_payout || selectedClaimDuty.allowance_amount}</span>
               </div>
             </div>
 
             <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
-              ℹ️ Resit tuntutan dijana berdasarkan waktu check-in dan check-out sebenar yang diimbas di Wad HoSZA.
+              ℹ️ Claim receipt generated based on actual ward check-in and check-out timestamps verified at HoSZA Ward.
             </div>
           </div>
         </div>

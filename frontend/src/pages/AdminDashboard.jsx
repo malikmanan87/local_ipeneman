@@ -360,7 +360,7 @@ export default function AdminDashboard({ user }) {
               <div style={{ fontSize: '1.9rem', fontWeight: '800', color: '#38bdf8', lineHeight: 1 }}>{userCounts.all}</div>
               <div style={{ fontSize: '0.88rem', fontWeight: '700', color: activeTab === 'users' ? '#38bdf8' : '#f1f5f9', marginTop: '0.3rem' }}>Total Users</div>
               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem', lineHeight: '1.35' }}>
-                {userCounts.companion} Peneman · {userCounts.user} Waris · {userCounts.staff} Staf · {userCounts.admin} Admin
+                {userCounts.companion} Companions · {userCounts.user} Families · {userCounts.staff} Staff · {userCounts.admin} Admin
               </div>
             </div>
           </div>

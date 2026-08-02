@@ -339,6 +339,32 @@ class RequestController extends ResourceController
                  ->set(['status' => 'rejected'])
                  ->update();
 
+        // Auto-reject any other pending applications by this companion for overlapping shifts on the same date
+        $currentJob = $requestModel->find($requestId);
+        if ($currentJob) {
+            $otherApps = $appModel->where('companion_id', $companionId)
+                                  ->where('status', 'pending')
+                                  ->where('request_id !=', $requestId)
+                                  ->findAll();
+
+            foreach ($otherApps as $otherApp) {
+                $otherJob = $requestModel->find($otherApp['request_id']);
+                if ($otherJob && $otherJob['shift_date'] === $currentJob['shift_date']) {
+                    $cStart = strtotime($currentJob['shift_date'] . ' ' . $currentJob['start_time']);
+                    $cEnd   = strtotime($currentJob['shift_date'] . ' ' . $currentJob['end_time']);
+                    $oStart = strtotime($otherJob['shift_date'] . ' ' . $otherJob['start_time']);
+                    $oEnd   = strtotime($otherJob['shift_date'] . ' ' . $otherJob['end_time']);
+
+                    if ($cEnd < $cStart) $cEnd += 86400;
+                    if ($oEnd < $oStart) $oEnd += 86400;
+
+                    if ($cStart < $oEnd && $oStart < $cEnd) {
+                        $appModel->update($otherApp['id'], ['status' => 'rejected']);
+                    }
+                }
+            }
+        }
+
         return $this->respond([
             'status'  => 200,
             'message' => 'Companion successfully assigned for this ward request.'

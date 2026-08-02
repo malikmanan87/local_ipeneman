@@ -35,6 +35,29 @@ class CompanionController extends ResourceController
             return $this->failForbidden('Safety Error: Companion must be of the SAME GENDER as the patient.');
         }
 
+        // Schedule Overlap Conflict Protection:
+        // Check if companion already has an assigned or in_progress shift on the SAME DATE with overlapping hours
+        $requestModel = new RequestModel();
+        $myDuties = $requestModel->where('assigned_companion_id', $companionId)
+                                 ->whereIn('status', ['assigned', 'in_progress'])
+                                 ->where('shift_date', $job['shift_date'])
+                                 ->findAll();
+
+        foreach ($myDuties as $duty) {
+            $newStart  = strtotime($job['shift_date'] . ' ' . $job['start_time']);
+            $newEnd    = strtotime($job['shift_date'] . ' ' . $job['end_time']);
+            $dutyStart = strtotime($duty['shift_date'] . ' ' . $duty['start_time']);
+            $dutyEnd   = strtotime($duty['shift_date'] . ' ' . $duty['end_time']);
+
+            if ($newEnd < $newStart) $newEnd += 86400;
+            if ($dutyEnd < $dutyStart) $dutyEnd += 86400;
+
+            // Overlap condition: newStart < dutyEnd AND dutyStart < newEnd
+            if ($newStart < $dutyEnd && $dutyStart < $newEnd) {
+                return $this->failForbidden('Schedule Conflict: You are already assigned to another ward duty during these hours (' . $duty['start_time'] . ' - ' . $duty['end_time'] . ').');
+            }
+        }
+
         $appModel = new ApplicationModel();
         $existing = $appModel->where('request_id', $requestId)
                              ->where('companion_id', $companionId)

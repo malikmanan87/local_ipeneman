@@ -26,6 +26,7 @@ export default function CompanionDashboard({ user }) {
   const [activeDutyForPass, setActiveDutyForPass] = useState(null);
   const [careNoteText, setCareNoteText] = useState({});
   const [activeTab, setActiveTab] = useState('duties');
+  const [dutyFilter, setDutyFilter] = useState('all'); // 'all' | 'active' | 'completed'
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [selectedClaimDuty, setSelectedClaimDuty] = useState(null);
 
@@ -131,16 +132,24 @@ export default function CompanionDashboard({ user }) {
         {/* ── Stat Cards ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.1rem', marginBottom: '1.75rem' }}>
           {[
-            { label: 'Active Duties', value: activeDuties.length, icon: '🔄', color: '#a78bfa', tab: 'duties' },
-            { label: 'Completed Shifts', value: completedDuties.length, icon: '✅', color: '#34d399', tab: 'duties' },
+            { label: 'Active Duties', value: activeDuties.length, icon: '🔄', color: '#a78bfa', tab: 'duties', filter: 'active' },
+            { label: 'Completed Shifts', value: completedDuties.length, icon: '✅', color: '#34d399', tab: 'duties', filter: 'completed' },
             { label: 'Open Opportunities', value: availableJobs.length, icon: '🔍', color: '#38bdf8', tab: 'jobs' },
             { label: 'Rating Score', value: `${parseFloat(ratingsData.rating_avg || 5.0).toFixed(1)}★`, icon: '⭐', color: '#f59e0b', tab: 'ratings' },
           ].map(s => (
             <div
               key={s.tab + s.label}
-              onClick={() => setActiveTab(s.tab)}
+              onClick={() => {
+                setActiveTab(s.tab);
+                if (s.filter) setDutyFilter(s.filter);
+                else setDutyFilter('all');
+              }}
               className="glass-panel"
-              style={{ padding: '1.25rem', cursor: 'pointer', border: activeTab === s.tab ? `1.5px solid ${s.color}` : '1px solid var(--glass-border)', transition: 'all 0.2s ease' }}
+              style={{
+                padding: '1.25rem', cursor: 'pointer',
+                border: (activeTab === s.tab && (!s.filter || dutyFilter === s.filter)) ? `1.5px solid ${s.color}` : '1px solid var(--glass-border)',
+                transition: 'all 0.2s ease'
+              }}
             >
               <div style={{ fontSize: '1.4rem', marginBottom: '0.5rem' }}>{s.icon}</div>
               <div style={{ fontSize: '1.6rem', fontWeight: '800', color: s.color, lineHeight: 1 }}>{s.value}</div>
@@ -150,17 +159,50 @@ export default function CompanionDashboard({ user }) {
         </div>
 
         {/* ── Tab: My Duties ── */}
-        {activeTab === 'duties' && (
-          <div className="animate-fade-in">
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
-            ) : myDuties.length === 0 ? (
-              <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
-                No duties assigned yet. Browse and apply for ward opportunities below.
+        {activeTab === 'duties' && (() => {
+          const filteredDuties = myDuties.filter(d => {
+            if (dutyFilter === 'active') return d.status === 'assigned' || d.status === 'in_progress';
+            if (dutyFilter === 'completed') return d.status === 'completed';
+            return true;
+          });
+
+          return (
+            <div className="animate-fade-in">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 My Companion Duties</h2>
+                {/* Status Filter Pills */}
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'all',       label: 'All Duties',     count: myDuties.length },
+                    { key: 'active',    label: 'Active Duties',  count: activeDuties.length },
+                    { key: 'completed', label: 'Completed',      count: completedDuties.length },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setDutyFilter(f.key)}
+                      style={{
+                        padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
+                        fontWeight: '700', cursor: 'pointer',
+                        background: dutyFilter === f.key ? '#38bdf8' : 'rgba(255,255,255,0.07)',
+                        color: dutyFilter === f.key ? '#0f172a' : 'var(--text-muted)',
+                        border: 'none', transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {f.label} <span style={{ opacity: 0.75 }}>({f.count})</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
-                {myDuties.map(duty => (
+
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
+              ) : filteredDuties.length === 0 ? (
+                <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
+                  No duties found for this filter.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
+                  {filteredDuties.map(duty => (
                   <div key={duty.id} className="glass-panel" style={{ padding: '1.5rem', borderLeft: `3px solid ${STATUS_STYLE[duty.status]?.color || '#94a3b8'}` }}>
                     {/* Card Header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -252,10 +294,11 @@ export default function CompanionDashboard({ user }) {
                     )}
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-        )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Tab: Open Opportunities ── */}
         {activeTab === 'jobs' && (

@@ -450,9 +450,18 @@ export default function CompanionDashboard({ user }) {
                           </div>
                         </div>
                       ) : job.has_applied ? (
-                        <button disabled style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(51,65,85,0.6)', border: '1px solid #475569', color: '#38bdf8', fontWeight: '700', fontSize: '0.82rem', cursor: 'not-allowed' }}>
-                          ⚡ Assigned — Pending Check-In
-                        </button>
+                        <div>
+                          <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '10px', padding: '0.55rem', marginBottom: '0.5rem', textAlign: 'center', fontSize: '0.78rem', color: '#34d399', fontWeight: '700' }}>
+                            ⚡ You are assigned to this duty
+                          </div>
+                          <button
+                            onClick={() => { setActiveTab('duties'); setDutyFilter('active'); }}
+                            className="btn btn-primary"
+                            style={{ width: '100%', fontSize: '0.82rem', padding: '0.55rem' }}
+                          >
+                            ▶ Go to My Duties → Check In
+                          </button>
+                        </div>
                       ) : (
                         <button
                           onClick={() => {

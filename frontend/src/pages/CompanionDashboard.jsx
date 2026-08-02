@@ -26,6 +26,7 @@ export default function CompanionDashboard({ user }) {
   const [activeDutyForPass, setActiveDutyForPass] = useState(null);
   const [careNoteText, setCareNoteText] = useState({});
   const [activeTab, setActiveTab] = useState('duties');
+  const [dutyFilter, setDutyFilter] = useState('active'); // 'all' | 'active' | 'completed'
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [selectedClaimDuty, setSelectedClaimDuty] = useState(null);
   const [showConsentModal, setShowConsentModal] = useState(false);

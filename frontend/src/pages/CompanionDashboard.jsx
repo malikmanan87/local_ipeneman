@@ -55,7 +55,7 @@ export default function CompanionDashboard({ user }) {
       const jobsList   = jobsRes.data.data || [];
       const dutiesList = dutiesRes.data || [];
 
-      // Build initial withdraw countdowns for jobs the companion just applied for
+      // Build initial withdraw countdowns from availableJobs
       const newCountdowns = {};
       jobsList.forEach(job => {
         if (job.has_applied && job.applied_at) {
@@ -65,6 +65,12 @@ export default function CompanionDashboard({ user }) {
           if (secsLeft > 0) {
             newCountdowns[job.id] = secsLeft;
           }
+        }
+      });
+      // Also seed from myDuties (assigned duties with withdraw window still open)
+      dutiesList.forEach(duty => {
+        if (duty.status === 'assigned' && duty.withdraw_seconds_left > 0) {
+          newCountdowns[duty.id] = duty.withdraw_seconds_left;
         }
       });
       setWithdrawCountdowns(newCountdowns);
@@ -337,6 +343,19 @@ export default function CompanionDashboard({ user }) {
                       >
                         📱 Show E-Pass
                       </button>
+                      {duty.status === 'assigned' && (duty.withdraw_seconds_left > 0 || withdrawCountdowns[duty.id] > 0) && (
+                        <div style={{ width: '100%' }}>
+                          <div style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.35)', borderRadius: '10px', padding: '0.6rem', marginBottom: '0.45rem', textAlign: 'center', fontSize: '0.8rem', color: '#fbbf24', fontWeight: '700' }}>
+                            ⚠️ Applied by mistake? Withdraw window closes in: <strong style={{ fontSize: '1rem' }}>{withdrawCountdowns[duty.id] || duty.withdraw_seconds_left}s</strong>
+                          </div>
+                          <button
+                            onClick={() => handleWithdraw(duty.id)}
+                            style={{ width: '100%', padding: '0.5rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', marginBottom: '0.45rem' }}
+                          >
+                            ⬅️ Withdraw Application ({withdrawCountdowns[duty.id] || duty.withdraw_seconds_left}s left)
+                          </button>
+                        </div>
+                      )}
                       {duty.status === 'assigned' && (
                         <button onClick={() => handleCheckIn(duty.id)} className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
                           ▶ Check In

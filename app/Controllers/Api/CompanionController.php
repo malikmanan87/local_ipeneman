@@ -200,12 +200,32 @@ class CompanionController extends ResourceController
     {
         $requestModel = new RequestModel();
         $dutyLogModel = new DutyLogModel();
+        $appModel     = new ApplicationModel();
 
         $duties = $requestModel->where('assigned_companion_id', $companionId)
                                ->orderBy('shift_date', 'DESC')
                                ->findAll();
 
         foreach ($duties as &$d) {
+            // Inject applied_at + withdraw_seconds_left for the 60-second withdraw window
+            if ($d['status'] === 'assigned') {
+                $app = $appModel->where('request_id', $d['id'])
+                                ->where('companion_id', $companionId)
+                                ->where('status', 'accepted')
+                                ->orderBy('id', 'DESC')
+                                ->first();
+                if ($app && !empty($app['applied_at'])) {
+                    $d['applied_at']            = $app['applied_at'];
+                    $d['withdraw_seconds_left']  = max(0, 60 - (time() - strtotime($app['applied_at'])));
+                } else {
+                    $d['applied_at']            = null;
+                    $d['withdraw_seconds_left']  = 0;
+                }
+            } else {
+                $d['applied_at']           = null;
+                $d['withdraw_seconds_left'] = 0;
+            }
+
             $log = $dutyLogModel->where('request_id', $d['id'])
                                 ->where('companion_id', $companionId)
                                 ->orderBy('id', 'DESC')

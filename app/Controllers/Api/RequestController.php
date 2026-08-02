@@ -159,11 +159,11 @@ class RequestController extends ResourceController
      */
     public function availableJobs()
     {
-        $gender      = $this->request->getGet('gender');
+        $gender      = strtoupper(trim($this->request->getGet('gender') ?? ''));
         $companionId = $this->request->getGet('companion_id');
 
         if (!$gender || !in_array($gender, ['L', 'P'])) {
-            return $this->failValidationError('Companion gender is required for safety matching.');
+            return $this->failValidationError('Companion gender is required for safety matching (L/P).');
         }
 
         $requestModel = new RequestModel();

@@ -32,9 +32,9 @@ class CompanionController extends ResourceController
             return $this->failNotFound('Request or Companion not found.');
         }
 
-        // Hard Rule: Must be same gender as patient
-        if ($job['patient_gender'] !== $user['gender']) {
-            return $this->failForbidden('Safety Error: Companion must be of the SAME GENDER as the patient.');
+        // Hard Rule: Companion must be of the SAME GENDER as the patient
+        if (strtoupper(trim($job['patient_gender'])) !== strtoupper(trim($user['gender']))) {
+            return $this->failForbidden('Safety Policy Error: Companions can ONLY apply for patient requests of the SAME GENDER (Male companion → Male patient, Female companion → Female patient).');
         }
 
         // Must be verified & active

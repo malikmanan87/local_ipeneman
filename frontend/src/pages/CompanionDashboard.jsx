@@ -414,7 +414,9 @@ export default function CompanionDashboard({ user }) {
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
-                {availableJobs.map(job => {
+                {availableJobs
+                  .filter(job => job.patient_gender?.toUpperCase() === user.gender?.toUpperCase())
+                  .map(job => {
                   const total = (parseFloat(job.allowance_amount || 0) + parseFloat(job.tip_amount || 0)).toFixed(2);
                   const hasTip = parseFloat(job.tip_amount) > 0;
                   return (

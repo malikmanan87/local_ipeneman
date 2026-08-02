@@ -28,6 +28,9 @@ export default function CompanionDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('duties');
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [selectedClaimDuty, setSelectedClaimDuty] = useState(null);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [selectedJobForConsent, setSelectedJobForConsent] = useState(null);
+  const [healthAgreed, setHealthAgreed] = useState(false);
 
   const fetchCompanionData = async () => {
     setLoading(true);
@@ -76,7 +79,7 @@ export default function CompanionDashboard({ user }) {
   const handleApply = async (requestId) => {
     try {
       const res = await companionAPI.applyJob({ request_id: requestId, companion_id: user.id });
-      alert(res.data.message || 'Duty application submitted successfully. Awaiting family/admin approval');
+      alert(res.data.message || '✓ Duty application submitted successfully. Awaiting family/admin approval.');
       fetchCompanionData();
     } catch (err) {
       alert(err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to apply.');
@@ -391,11 +394,15 @@ export default function CompanionDashboard({ user }) {
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleApply(job.id)}
+                          onClick={() => {
+                            setSelectedJobForConsent(job);
+                            setHealthAgreed(false);
+                            setShowConsentModal(true);
+                          }}
                           className="btn btn-primary"
                           style={{ width: '100%', fontSize: '0.875rem' }}
                         >
-                          Apply as Companion
+                          🛡️ Health Declaration &amp; Apply
                         </button>
                       )}
                     </div>
@@ -526,6 +533,88 @@ export default function CompanionDashboard({ user }) {
 
             <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px' }}>
               ℹ️ Claim receipt generated based on actual ward check-in and check-out timestamps verified at HoSZA Ward.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Health & Safety Self-Declaration Consent Form */}
+      {showConsentModal && selectedJobForConsent && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowConsentModal(false)}>
+          <div className="glass-panel modal-content animate-fade-in" style={{ maxWidth: '540px', padding: '1.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>🏥 HoSZA Companion Health &amp; Safety Consent</div>
+                <h3 style={{ fontWeight: '800', fontSize: '1.15rem', marginTop: '0.2rem' }}>Health Self-Declaration Form</h3>
+              </div>
+              <button onClick={() => setShowConsentModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+
+            <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.25)', borderRadius: '12px', padding: '1.1rem', marginBottom: '1.25rem', fontSize: '0.85rem', lineHeight: '1.65' }}>
+              <div style={{ fontWeight: '700', color: '#38bdf8', marginBottom: '0.5rem', fontSize: '0.82rem', textTransform: 'uppercase' }}>
+                📋 Shift Details: {selectedJobForConsent.ward_name} ({selectedJobForConsent.shift_date})
+              </div>
+              
+              <div style={{ color: '#e2e8f0', fontSize: '0.82rem', marginTop: '0.5rem' }}>
+                <p style={{ fontWeight: '700', color: '#fbbf24', marginBottom: '0.35rem' }}>1. Health &amp; Wellness Self-Declaration:</p>
+                <ul style={{ paddingLeft: '1.2rem', margin: '0 0 0.75rem 0', color: '#cbd5e1', lineHeight: '1.5' }}>
+                  <li>I am currently in good health and free from fever (&gt;37.5°C), cough, flu, shortness of breath, skin rash, or contagious illnesses.</li>
+                  <li>I am not under any official quarantine or isolation order for infectious diseases.</li>
+                  <li>I am physically &amp; mentally fit to perform patient assistance duties safely.</li>
+                </ul>
+
+                <p style={{ fontWeight: '700', color: '#34d399', marginBottom: '0.35rem' }}>2. Hospital Ward Hygiene &amp; Safety Undertaking:</p>
+                <ul style={{ paddingLeft: '1.2rem', margin: '0 0 0.75rem 0', color: '#cbd5e1', lineHeight: '1.5' }}>
+                  <li>I agree to practice frequent hand sanitization and wear protective face masks inside HoSZA ward premises as required.</li>
+                  <li>I undertake to follow all safety guidelines and directives issued by HoSZA Ward Nurses and Medical Officers.</li>
+                </ul>
+
+                <p style={{ fontWeight: '700', color: '#f87171', marginBottom: '0.35rem' }}>3. Truthfulness &amp; Legal Compliance:</p>
+                <p style={{ color: '#cbd5e1', fontSize: '0.78rem', fontStyle: 'italic', margin: 0 }}>
+                  I confirm that all statements provided are true and accurate. False health declaration will result in immediate shift cancellation and revocation of ward entry authorization.
+                </p>
+              </div>
+            </div>
+
+            {/* Checkbox agreement */}
+            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.85rem', borderRadius: '10px', marginBottom: '1.25rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer', fontSize: '0.83rem', color: '#f1f5f9', fontWeight: '600', lineHeight: '1.45' }}>
+                <input
+                  type="checkbox"
+                  checked={healthAgreed}
+                  onChange={e => setHealthAgreed(e.target.checked)}
+                  style={{ width: '18px', height: '18px', marginTop: '0.1rem', cursor: 'pointer', accentColor: '#38bdf8' }}
+                />
+                <span>I hereby declare that I am in good health, free from infectious symptoms, and agree to abide by all HoSZA Ward Health &amp; Safety Protocols.</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowConsentModal(false)}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.83rem', padding: '0.55rem 1.1rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!healthAgreed}
+                onClick={() => {
+                  setShowConsentModal(false);
+                  handleApply(selectedJobForConsent.id);
+                }}
+                className="btn btn-primary"
+                style={{
+                  fontSize: '0.83rem', padding: '0.55rem 1.1rem',
+                  opacity: healthAgreed ? 1 : 0.5,
+                  cursor: healthAgreed ? 'pointer' : 'not-allowed',
+                  background: healthAgreed ? 'linear-gradient(135deg, #0284c7, #38bdf8)' : 'rgba(51,65,85,0.6)'
+                }}
+              >
+                ✓ Agree &amp; Submit Application
+              </button>
             </div>
           </div>
         </div>

@@ -40,7 +40,7 @@ export default function CompanionDashboard({ user }) {
   // FCFS: Track 60-second withdraw countdown per job (keyed by request_id)
   const [withdrawCountdowns, setWithdrawCountdowns] = useState({});
 
-  const fetchCompanionData = async () => {
+  const fetchCompanionData = async (suppressTabSwitch = false) => {
     setLoading(true);
     try {
       // Auto-expire stale requests before loading
@@ -73,24 +73,23 @@ export default function CompanionDashboard({ user }) {
       setMyDuties(dutiesList);
       if (ratingsRes.data) setRatingsData(ratingsRes.data);
 
-      // Smart Priority Auto-Selection:
-      // 1st Priority: Active Duties (assigned / in_progress)
-      // 2nd Priority: Open Opportunities (available ward jobs matching gender)
-      // 3rd Priority: Completed Shifts
-      const activeCount    = dutiesList.filter(d => d.status === 'assigned' || d.status === 'in_progress').length;
-      const completedCount = dutiesList.filter(d => d.status === 'completed').length;
+      // Smart Priority Auto-Selection (skip if suppressTabSwitch is true)
+      if (!suppressTabSwitch) {
+        const activeCount    = dutiesList.filter(d => d.status === 'assigned' || d.status === 'in_progress').length;
+        const completedCount = dutiesList.filter(d => d.status === 'completed').length;
 
-      if (activeCount > 0) {
-        setActiveTab('duties');
-        setDutyFilter('active');
-      } else if (jobsList.length > 0) {
-        setActiveTab('jobs');
-      } else if (completedCount > 0) {
-        setActiveTab('duties');
-        setDutyFilter('completed');
-      } else {
-        setActiveTab('duties');
-        setDutyFilter('all');
+        if (activeCount > 0) {
+          setActiveTab('duties');
+          setDutyFilter('active');
+        } else if (jobsList.length > 0) {
+          setActiveTab('jobs');
+        } else if (completedCount > 0) {
+          setActiveTab('duties');
+          setDutyFilter('completed');
+        } else {
+          setActiveTab('duties');
+          setDutyFilter('all');
+        }
       }
     } catch (err) {
       console.error('Error fetching companion data:', err);
@@ -118,10 +117,11 @@ export default function CompanionDashboard({ user }) {
   const handleApply = async (requestId) => {
     try {
       const res = await companionAPI.applyJob({ request_id: requestId, companion_id: user.id });
-      // Start 60-second withdraw countdown
+      // Start 60-second withdraw countdown — stay on Jobs tab so withdraw button is visible
       setWithdrawCountdowns(prev => ({ ...prev, [requestId]: 60 }));
-      await showSuccess('⚡ Auto-Assigned!', res.data.message || 'You have been auto-assigned to this duty shift! You have 60 seconds to withdraw.');
-      fetchCompanionData();
+      setActiveTab('jobs'); // ensure companion stays on Jobs tab to see withdraw button
+      await showSuccess('⚡ Auto-Assigned!', 'You are confirmed for this duty! You have 60 seconds to withdraw below if this was a mistake.');
+      fetchCompanionData(true); // suppressTabSwitch=true — keep companion on Jobs tab
     } catch (err) {
       showError('Application Failed', err.response?.data?.messages?.error || err.response?.data?.message || 'Failed to apply.');
     }

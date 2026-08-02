@@ -908,20 +908,30 @@ export default function AdminDashboard({ user }) {
                     {comp.companion_profile?.student_staff_id && <span> · 🎓 {comp.companion_profile.student_staff_id}</span>}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                  <button onClick={() => handleApproveApplicant(comp.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}>
-                    ✓ Assign
-                  </button>
-                  <button
-                    onClick={() => handleRejectApplicant(comp.id)}
-                    style={{
-                      padding: '0.45rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.4)',
-                      background: 'rgba(248,113,113,0.1)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer'
-                    }}
-                  >
-                    ✕ Reject
-                  </button>
-                </div>
+                {comp.application_status === 'rejected' ? (
+                  <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#f87171', background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.3)', padding: '0.35rem 0.75rem', borderRadius: '8px' }}>
+                    ✕ Rejected (History)
+                  </span>
+                ) : comp.application_status === 'accepted' ? (
+                  <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#34d399', background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', padding: '0.35rem 0.75rem', borderRadius: '8px' }}>
+                    ✓ Assigned
+                  </span>
+                ) : (
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                    <button onClick={() => handleApproveApplicant(comp.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}>
+                      ✓ Assign
+                    </button>
+                    <button
+                      onClick={() => handleRejectApplicant(comp.id)}
+                      style={{
+                        padding: '0.45rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(248,113,113,0.4)',
+                        background: 'rgba(248,113,113,0.1)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer'
+                      }}
+                    >
+                      ✕ Reject
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

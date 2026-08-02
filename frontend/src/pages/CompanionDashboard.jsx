@@ -390,9 +390,15 @@ export default function CompanionDashboard({ user }) {
                       </div>
 
                       {job.has_applied ? (
-                        <button disabled style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(51,65,85,0.6)', border: '1px solid #475569', color: '#38bdf8', fontWeight: '700', fontSize: '0.82rem', cursor: 'not-allowed' }}>
-                          ✓ Duty application submitted — Awaiting family/admin approval
-                        </button>
+                        job.application_status === 'rejected' ? (
+                          <button disabled style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'not-allowed' }}>
+                            ✕ Application Not Selected by Admin
+                          </button>
+                        ) : (
+                          <button disabled style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(51,65,85,0.6)', border: '1px solid #475569', color: '#38bdf8', fontWeight: '700', fontSize: '0.82rem', cursor: 'not-allowed' }}>
+                            ✓ Duty application submitted — Awaiting admin approval
+                          </button>
+                        )
                       ) : (
                         <button
                           onClick={() => {

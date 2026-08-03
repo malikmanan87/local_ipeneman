@@ -96,6 +96,8 @@ export default function AdminDashboard({ user }) {
   const [roleFilter, setRoleFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('open');
   const [financeFilter, setFinanceFilter] = useState('all');
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const LEDGER_PAGE_SIZE = 10;
   const [requests, setRequests] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [unverifiedUsers, setUnverifiedUsers] = useState([]);
@@ -615,6 +617,11 @@ export default function AdminDashboard({ user }) {
             return true;
           });
 
+          const ledgerTotalPages = Math.max(1, Math.ceil(filteredFinanceRequests.length / LEDGER_PAGE_SIZE));
+          const ledgerSafeCurrentPage = Math.min(ledgerPage, ledgerTotalPages);
+          const ledgerStart = (ledgerSafeCurrentPage - 1) * LEDGER_PAGE_SIZE;
+          const pagedFinanceRequests = filteredFinanceRequests.slice(ledgerStart, ledgerStart + LEDGER_PAGE_SIZE);
+
           // Accurate dynamic calculations directly from requests array
           const completedPayoutCalc = requests
             .filter(r => r.status === 'completed')
@@ -695,7 +702,9 @@ export default function AdminDashboard({ user }) {
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div>
                     <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>💵 HoSZA Shift Financial Ledger</h2>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Showing {filteredFinanceRequests.length} shift transactions</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                      Showing {ledgerStart + 1}–{Math.min(ledgerStart + LEDGER_PAGE_SIZE, filteredFinanceRequests.length)} of {filteredFinanceRequests.length} shift transactions
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -710,7 +719,7 @@ export default function AdminDashboard({ user }) {
                       ].map(f => (
                         <button
                           key={f.key}
-                          onClick={() => setFinanceFilter(f.key)}
+                          onClick={() => { setFinanceFilter(f.key); setLedgerPage(1); }}
                           style={{
                             padding: '0.35rem 0.8rem', borderRadius: '9999px', fontSize: '0.78rem',
                             fontWeight: '700', cursor: 'pointer',
@@ -748,14 +757,15 @@ export default function AdminDashboard({ user }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredFinanceRequests.map((req, i) => {
+                        {pagedFinanceRequests.map((req, i) => {
+                          const rowNum = ledgerStart + i + 1;
                           const base = parseFloat(req.allowance_amount || 0);
                           const tip = parseFloat(req.tip_amount || 0);
                           const total = base + tip;
 
                           return (
                             <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                              <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{rowNum}</td>
                               <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
                               <td style={{ padding: '0.85rem 1rem' }}>
                                 {req.companion ? (
@@ -796,6 +806,60 @@ export default function AdminDashboard({ user }) {
                         })}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {/* ── Pagination Bar ── */}
+                {filteredFinanceRequests.length > LEDGER_PAGE_SIZE && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '0.65rem' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Page <strong style={{ color: '#f1f5f9' }}>{ledgerSafeCurrentPage}</strong> of <strong style={{ color: '#f1f5f9' }}>{ledgerTotalPages}</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                      <button
+                        onClick={() => setLedgerPage(1)}
+                        disabled={ledgerSafeCurrentPage === 1}
+                        style={{ padding: '0.35rem 0.7rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: ledgerSafeCurrentPage === 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === 1 ? '#475569' : '#f1f5f9', cursor: ledgerSafeCurrentPage === 1 ? 'not-allowed' : 'pointer' }}
+                      >« First</button>
+                      <button
+                        onClick={() => setLedgerPage(p => Math.max(1, p - 1))}
+                        disabled={ledgerSafeCurrentPage === 1}
+                        style={{ padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: ledgerSafeCurrentPage === 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === 1 ? '#475569' : '#f1f5f9', cursor: ledgerSafeCurrentPage === 1 ? 'not-allowed' : 'pointer' }}
+                      >‹ Prev</button>
+
+                      {/* Page number buttons */}
+                      {Array.from({ length: ledgerTotalPages }, (_, idx) => idx + 1)
+                        .filter(pg => pg === 1 || pg === ledgerTotalPages || Math.abs(pg - ledgerSafeCurrentPage) <= 2)
+                        .reduce((acc, pg, idx, arr) => {
+                          if (idx > 0 && pg - arr[idx - 1] > 1) acc.push('...');
+                          acc.push(pg);
+                          return acc;
+                        }, [])
+                        .map((pg, idx) => pg === '...' ? (
+                          <span key={`ellipsis-${idx}`} style={{ padding: '0.35rem 0.3rem', color: '#475569', fontSize: '0.78rem' }}>…</span>
+                        ) : (
+                          <button
+                            key={pg}
+                            onClick={() => setLedgerPage(pg)}
+                            style={{ padding: '0.35rem 0.7rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '800', border: '1px solid', borderColor: ledgerSafeCurrentPage === pg ? '#34d399' : 'var(--glass-border)', background: ledgerSafeCurrentPage === pg ? '#34d399' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === pg ? '#0f172a' : '#f1f5f9', cursor: 'pointer', minWidth: '2rem' }}
+                          >{pg}</button>
+                        ))
+                      }
+
+                      <button
+                        onClick={() => setLedgerPage(p => Math.min(ledgerTotalPages, p + 1))}
+                        disabled={ledgerSafeCurrentPage === ledgerTotalPages}
+                        style={{ padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: ledgerSafeCurrentPage === ledgerTotalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === ledgerTotalPages ? '#475569' : '#f1f5f9', cursor: ledgerSafeCurrentPage === ledgerTotalPages ? 'not-allowed' : 'pointer' }}
+                      >Next ›</button>
+                      <button
+                        onClick={() => setLedgerPage(ledgerTotalPages)}
+                        disabled={ledgerSafeCurrentPage === ledgerTotalPages}
+                        style={{ padding: '0.35rem 0.7rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: ledgerSafeCurrentPage === ledgerTotalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === ledgerTotalPages ? '#475569' : '#f1f5f9', cursor: ledgerSafeCurrentPage === ledgerTotalPages ? 'not-allowed' : 'pointer' }}
+                      >Last »</button>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {filteredFinanceRequests.length} total records
+                    </div>
                   </div>
                 )}
               </div>

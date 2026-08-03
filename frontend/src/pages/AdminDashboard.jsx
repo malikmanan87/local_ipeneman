@@ -4,7 +4,7 @@ import CareNotesList from '../components/CareNotesList';
 import Swal from 'sweetalert2';
 import { showSuccess, showError, showWarning, showConfirm } from '../utils/swal';
 import { formatTimeAMPM, formatShiftRange } from '../utils/formatTime';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const ROLE_CONFIG = {
   companion: { label: 'Companion',     color: '#34d399', bg: 'rgba(5,150,105,0.18)',  icon: '👨‍🦱' },
@@ -718,6 +718,53 @@ export default function AdminDashboard({ user }) {
             .filter(r => r.status !== 'cancelled')
             .reduce((sum, r) => sum + parseFloat(r.tip_amount || 0), 0);
 
+          // ── Monthly Payout Bar Chart data (last 6 months, completed shifts only) ──
+          const monthlyPayoutData = (() => {
+            const months = {};
+            // Seed last 6 months with zero values
+            for (let i = 5; i >= 0; i--) {
+              const d = new Date();
+              d.setDate(1);
+              d.setMonth(d.getMonth() - i);
+              const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+              const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+              months[key] = { month: label, base: 0, tips: 0, total: 0 };
+            }
+            requests
+              .filter(r => r.status === 'completed' && r.shift_date)
+              .forEach(r => {
+                const key = r.shift_date.slice(0, 7); // YYYY-MM
+                if (months[key]) {
+                  const base = parseFloat(r.allowance_amount || 0);
+                  const tip  = parseFloat(r.tip_amount || 0);
+                  months[key].base  += base;
+                  months[key].tips  += tip;
+                  months[key].total += base + tip;
+                }
+              });
+            return Object.values(months);
+          })();
+
+          const BarTooltip = ({ active, payload, label }) => {
+            if (active && payload && payload.length) {
+              const total = payload.reduce((s, p) => s + (p.value || 0), 0);
+              return (
+                <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '0.65rem 1rem', fontSize: '0.82rem', color: '#f1f5f9' }}>
+                  <div style={{ fontWeight: '800', marginBottom: '0.3rem' }}>{label}</div>
+                  {payload.map(p => (
+                    <div key={p.name} style={{ color: p.fill, fontWeight: '700' }}>
+                      {p.name}: RM {p.value.toFixed(2)}
+                    </div>
+                  ))}
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '0.35rem', paddingTop: '0.35rem', color: '#34d399', fontWeight: '900' }}>
+                    Total: RM {total.toFixed(2)}
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          };
+
           return (
             <div className="animate-fade-in">
               {/* Unified Financial Summary Panel with Separators */}
@@ -769,6 +816,32 @@ export default function AdminDashboard({ user }) {
                     <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.2rem' }}>Tips from patient family</div>
                   </div>
 
+                </div>
+              </div>
+
+              {/* ── Monthly Payout Bar Chart ── */}
+              <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.25rem' }}>
+                <div style={{ marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#f1f5f9' }}>📈 Monthly Payout Trend</h2>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Base allowance + tips — completed shifts only (last 6 months)</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', fontWeight: '700' }}>
+                    <span style={{ color: '#34d399' }}>■ Base Allowance</span>
+                    <span style={{ color: '#a78bfa' }}>■ Tips</span>
+                  </div>
+                </div>
+                <div style={{ height: '240px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyPayoutData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }} barSize={32}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }} axisLine={false} tickLine={false} />
+                      <YAxis tickFormatter={v => `RM${v}`} tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
+                      <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                      <Bar dataKey="base" name="Base Allowance" stackId="payout" fill="#34d399" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="tips" name="Tips" stackId="payout" fill="#a78bfa" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 

@@ -66,6 +66,10 @@ export default function CompanionDashboard({ user }) {
             newCountdowns[job.id] = secsLeft;
           }
         }
+        // Seed re-apply cooldown countdown (keyed cd_<id>) from backend
+        if (job.cooldown_seconds_left > 0) {
+          newCountdowns[`cd_${job.id}`] = job.cooldown_seconds_left;
+        }
       });
       // Also seed from myDuties (assigned duties with withdraw window still open)
       dutiesList.forEach(duty => {
@@ -492,7 +496,31 @@ export default function CompanionDashboard({ user }) {
                             ▶ Go to My Duties → Check In
                           </button>
                         </div>
-                      ) : (
+                      ) : job.cooldown_seconds_left > 0 ? (() => {
+                        // Live countdown using the seeded withdrawCountdowns or fallback to backend value
+                        const cdSecs = withdrawCountdowns[`cd_${job.id}`] ?? job.cooldown_seconds_left;
+                        const cdMins = Math.floor(cdSecs / 60);
+                        const cdRemSecs = cdSecs % 60;
+                        return (
+                          <div>
+                            <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: '10px', padding: '0.6rem', marginBottom: '0.5rem', textAlign: 'center' }}>
+                              <div style={{ color: '#fbbf24', fontWeight: '800', fontSize: '0.82rem' }}>⏳ Re-Apply Cooldown Active</div>
+                              <div style={{ color: '#94a3b8', fontSize: '0.76rem', marginTop: '0.2rem' }}>
+                                You withdrew this shift. You may re-apply in:
+                              </div>
+                              <div style={{ color: '#fbbf24', fontWeight: '900', fontSize: '1.1rem', marginTop: '0.25rem' }}>
+                                {cdMins}m {String(cdRemSecs).padStart(2, '0')}s
+                              </div>
+                            </div>
+                            <button
+                              disabled
+                              style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#475569', fontWeight: '700', fontSize: '0.82rem', cursor: 'not-allowed' }}
+                            >
+                              🔒 Apply Locked ({cdMins}m {String(cdRemSecs).padStart(2, '0')}s)
+                            </button>
+                          </div>
+                        );
+                      })() : (
                         <button
                           onClick={() => {
                             setSelectedJobForConsent(job);

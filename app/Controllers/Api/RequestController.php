@@ -183,9 +183,26 @@ class RequestController extends ResourceController
                                 ->where('companion_id', $companionId)
                                 ->whereNotIn('status', ['withdrawn'])
                                 ->first();
-                $job['has_applied'] = $app ? true : false;
+                $job['has_applied']        = $app ? true : false;
                 $job['application_status'] = $app ? $app['status'] : null;
-                $job['applied_at'] = $app ? ($app['applied_at'] ?? null) : null;
+                $job['applied_at']         = $app ? ($app['applied_at'] ?? null) : null;
+
+                // 30-minute re-apply cooldown — check for recent withdrawal
+                $withdrawn = $appModel->where('request_id', $job['id'])
+                                      ->where('companion_id', $companionId)
+                                      ->where('status', 'withdrawn')
+                                      ->orderBy('id', 'DESC')
+                                      ->first();
+
+                if ($withdrawn && !empty($withdrawn['withdrawn_at'])) {
+                    $secondsSince   = time() - strtotime($withdrawn['withdrawn_at']);
+                    $secsRemaining  = max(0, 1800 - $secondsSince);
+                    $job['cooldown_until']        = $secsRemaining > 0 ? date('Y-m-d H:i:s', strtotime($withdrawn['withdrawn_at']) + 1800) : null;
+                    $job['cooldown_seconds_left'] = $secsRemaining;
+                } else {
+                    $job['cooldown_until']        = null;
+                    $job['cooldown_seconds_left'] = 0;
+                }
             }
         }
 

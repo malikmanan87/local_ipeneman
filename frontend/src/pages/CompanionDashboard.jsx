@@ -504,9 +504,9 @@ export default function CompanionDashboard({ user }) {
                         return (
                           <div>
                             <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: '10px', padding: '0.6rem', marginBottom: '0.5rem', textAlign: 'center' }}>
-                              <div style={{ color: '#fbbf24', fontWeight: '800', fontSize: '0.82rem' }}>⏳ Re-Apply Cooldown Active</div>
+                              <div style={{ color: '#fbbf24', fontWeight: '800', fontSize: '0.82rem' }}>🔒 Cooldown Period</div>
                               <div style={{ color: '#94a3b8', fontSize: '0.76rem', marginTop: '0.2rem' }}>
-                                You withdrew this shift. You may re-apply in:
+                                Re-apply available in:
                               </div>
                               <div style={{ color: '#fbbf24', fontWeight: '900', fontSize: '1.1rem', marginTop: '0.25rem' }}>
                                 {cdMins}m {String(cdRemSecs).padStart(2, '0')}s

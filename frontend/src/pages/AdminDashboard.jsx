@@ -4,6 +4,7 @@ import CareNotesList from '../components/CareNotesList';
 import Swal from 'sweetalert2';
 import { showSuccess, showError, showWarning, showConfirm } from '../utils/swal';
 import { formatTimeAMPM, formatShiftRange } from '../utils/formatTime';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const ROLE_CONFIG = {
   companion: { label: 'Companion',     color: '#34d399', bg: 'rgba(5,150,105,0.18)',  icon: '👨‍🦱' },
@@ -492,8 +493,82 @@ export default function AdminDashboard({ user }) {
             return true;
           });
 
+          const donutData = [
+            { name: 'Open',        value: statusCounts.open,        color: '#34d399' },
+            { name: 'Assigned',    value: statusCounts.in_progress, color: '#fbbf24' },
+            { name: 'Completed',   value: statusCounts.completed,   color: '#38bdf8' },
+            { name: 'Cancelled',   value: statusCounts.cancelled,   color: '#f87171' },
+            { name: 'Expired',     value: statusCounts.expired,     color: '#64748b' },
+          ].filter(d => d.value > 0);
+
+          const CustomTooltip = ({ active, payload }) => {
+            if (active && payload && payload.length) {
+              const d = payload[0];
+              return (
+                <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '0.65rem 1rem', fontSize: '0.82rem', color: '#f1f5f9' }}>
+                  <div style={{ fontWeight: '800', color: d.payload.color }}>{d.name}</div>
+                  <div style={{ marginTop: '0.2rem' }}>{d.value} shift{d.value !== 1 ? 's' : ''} &nbsp;<span style={{ color: '#94a3b8' }}>({((d.value / statusCounts.all) * 100).toFixed(1)}%)</span></div>
+                </div>
+              );
+            }
+            return null;
+          };
+
           return (
-            <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
+            <div className="animate-fade-in">
+              {/* ── Donut Chart Panel ── */}
+              <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.25rem' }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#f1f5f9' }}>🍩 Shift Status Overview</h2>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{statusCounts.all} total shifts recorded</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
+                  {/* Donut */}
+                  <div style={{ flex: '0 0 220px', height: '220px' }}>
+                    {donutData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={donutData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={65}
+                            outerRadius={100}
+                            paddingAngle={3}
+                            dataKey="value"
+                            strokeWidth={0}
+                          >
+                            {donutData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No data yet</div>
+                    )}
+                  </div>
+                  {/* Legend */}
+                  <div style={{ flex: '1', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.75rem' }}>
+                    {[
+                      { label: 'Open',      count: statusCounts.open,        color: '#34d399', icon: '🟢' },
+                      { label: 'Assigned',  count: statusCounts.in_progress, color: '#fbbf24', icon: '⚡' },
+                      { label: 'Completed', count: statusCounts.completed,   color: '#38bdf8', icon: '✅' },
+                      { label: 'Cancelled', count: statusCounts.cancelled,   color: '#f87171', icon: '🚫' },
+                      { label: 'Expired',   count: statusCounts.expired,     color: '#64748b', icon: '⌛' },
+                    ].map(item => (
+                      <div key={item.label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '0.75rem 1rem', borderLeft: `3px solid ${item.color}` }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', marginBottom: '0.25rem' }}>{item.icon} {item.label}</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: '900', color: item.color, lineHeight: 1 }}>{item.count}</div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
+                          {statusCounts.all > 0 ? ((item.count / statusCounts.all) * 100).toFixed(1) : 0}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
               <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
                   <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 Ward Requests Overview</h2>

@@ -248,10 +248,22 @@ class CompanionController extends ResourceController
             // Calculate actual worked hours, billable hours (capped at shift duration), & allowance
             $scheduledStart = strtotime($d['shift_date'] . ' ' . $d['start_time']);
             $scheduledEnd   = strtotime($d['shift_date'] . ' ' . $d['end_time']);
-            if ($scheduledEnd < $scheduledStart) {
+            if ($scheduledEnd <= $scheduledStart) {
                 // Overnight shift ending next day (e.g. 22:00 to 06:00)
                 $scheduledEnd += 86400;
             }
+
+            // Auto-complete in-progress duty if shift end time has passed
+            if ($d['status'] === 'in_progress' && time() >= $scheduledEnd) {
+                $d['status'] = 'completed';
+                $requestModel->update($d['id'], ['status' => 'completed']);
+                if ($log && empty($log['check_out'])) {
+                    $endDt = date('Y-m-d H:i:s', $scheduledEnd);
+                    $log['check_out'] = $endDt;
+                    $dutyLogModel->update($log['id'], ['check_out' => $endDt]);
+                }
+            }
+
             $scheduledSecs  = max(3600, $scheduledEnd - $scheduledStart);
             $scheduledHours = max(1, round($scheduledSecs / 3600, 2));
 

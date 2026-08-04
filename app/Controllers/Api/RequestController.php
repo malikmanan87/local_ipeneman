@@ -198,46 +198,127 @@ class RequestController extends ResourceController
     }
 
     /**
-     * Auto-expire open/assigned requests where shift end_time has passed
-     * Called lazily on Companion & Patient dashboard load
+     * Auto-expire or auto-complete requests where shift end_time has passed.
+     * - 'open' & 'assigned' shifts -> marked as 'expired'
+     * - 'in_progress' shifts (checked-in companion) -> marked as 'completed'
+     * Called lazily on Companion & Patient/Admin dashboard load.
      */
     public function autoExpireRequests()
     {
         $requestModel = new RequestModel();
         $dutyLogModel = new \App\Models\DutyLogModel();
-        $nowDatetime  = date('Y-m-d H:i:s');
+        $nowTs        = time();
 
-        // Find open or assigned requests where shift end time has passed
-        $expiredRequests = $requestModel
-            ->whereIn('status', ['open', 'assigned'])
-            ->where('CONCAT(shift_date, \' \', end_time) <=', $nowDatetime)
+        // Fetch all active/pending requests
+        $activeRequests = $requestModel
+            ->whereIn('status', ['open', 'assigned', 'in_progress'])
             ->findAll();
 
-        $expiredCount = 0;
-        foreach ($expiredRequests as $req) {
-            $requestModel->update($req['id'], [
-                'status' => 'expired'
-            ]);
+        $expiredCount   = 0;
+        $completedCount = 0;
 
-            // Log audit note if there was a duty log (assigned but never checked in)
-            if (!empty($req['assigned_companion_id'])) {
-                $log = $dutyLogModel->where('request_id', $req['id'])->first();
-                if ($log && empty($log['check_out'])) {
+        foreach ($activeRequests as $req) {
+            if (empty($req['shift_date']) || empty($req['end_time'])) {
+                continue;
+            }
+
+            // Calculate shift end timestamp (supporting overnight shifts)
+            $startTs = strtotime($req['shift_date'] . ' ' . ($req['start_time'] ?? '00:00:00'));
+            $endTs   = strtotime($req['shift_date'] . ' ' . $req['end_time']);
+            if ($endTs <= $startTs) {
+                // Overnight shift (e.g. 22:00 to 06:00 next morning)
+                $endTs += 86400;
+            }
+
+            // Skip if shift end time has not passed yet
+            if ($nowTs < $endTs) {
+                continue;
+            }
+
+            $endDatetimeFormatted = date('Y-m-d H:i:s', $endTs);
+            $endDisplayFormatted  = date('d/m/Y h:i A', $endTs);
+
+            if ($req['status'] === 'in_progress') {
+                // ── Auto-Complete In-Progress Duty ──
+                $requestModel->update($req['id'], [
+                    'status' => 'completed'
+                ]);
+
+                $log = $dutyLogModel->where('request_id', $req['id'])->orderBy('id', 'DESC')->first();
+
+                $notesList = [];
+                if ($log && !empty($log['care_notes'])) {
+                    $decoded = json_decode($log['care_notes'], true);
+                    if (is_array($decoded)) {
+                        $notesList = $decoded;
+                    }
+                }
+
+                $notesList[] = [
+                    'date' => date('Y-m-d'),
+                    'time' => date('h:i A'),
+                    'note' => "⏰ Shift end time reached ({$endDisplayFormatted}). Duty auto-completed by system."
+                ];
+
+                if ($log) {
                     $dutyLogModel->update($log['id'], [
-                        'check_out'           => $nowDatetime,
-                        'actual_worked_hours'  => 0.0,
-                        'actual_total_payout'  => 0.00,
-                        'care_notes'           => trim(($log['care_notes'] ?? '') . "\n[" . date('h:i A') . "] ⌛ Shift expired — companion was assigned but never checked in. Payout: RM 0.00.")
+                        'check_out'  => empty($log['check_out']) ? $endDatetimeFormatted : $log['check_out'],
+                        'care_notes' => json_encode($notesList)
+                    ]);
+                } else {
+                    $dutyLogModel->insert([
+                        'request_id'   => $req['id'],
+                        'companion_id' => $req['assigned_companion_id'] ?? null,
+                        'check_in'     => date('Y-m-d H:i:s', $startTs),
+                        'check_out'    => $endDatetimeFormatted,
+                        'care_notes'   => json_encode($notesList),
+                        'qr_token'     => 'PAS-AUTO-' . strtoupper(substr(md5(uniqid()), 0, 10))
                     ]);
                 }
+
+                $completedCount++;
+            } else {
+                // ── Auto-Expire Open or Assigned (Never Checked-In) Shift ──
+                $requestModel->update($req['id'], [
+                    'status' => 'expired'
+                ]);
+
+                if (!empty($req['assigned_companion_id'])) {
+                    $log = $dutyLogModel->where('request_id', $req['id'])->orderBy('id', 'DESC')->first();
+
+                    $notesList = [];
+                    if ($log && !empty($log['care_notes'])) {
+                        $decoded = json_decode($log['care_notes'], true);
+                        if (is_array($decoded)) {
+                            $notesList = $decoded;
+                        }
+                    }
+
+                    $notesList[] = [
+                        'date' => date('Y-m-d'),
+                        'time' => date('h:i A'),
+                        'note' => "⌛ Shift expired — companion was assigned but never checked in before shift end time ({$endDisplayFormatted}). Payout: RM 0.00."
+                    ];
+
+                    if ($log) {
+                        $dutyLogModel->update($log['id'], [
+                            'check_out'           => empty($log['check_out']) ? $endDatetimeFormatted : $log['check_out'],
+                            'actual_worked_hours' => 0.0,
+                            'actual_total_payout' => 0.00,
+                            'care_notes'          => json_encode($notesList)
+                        ]);
+                    }
+                }
+
+                $expiredCount++;
             }
-            $expiredCount++;
         }
 
         return $this->respond([
-            'status'        => 200,
-            'expired_count' => $expiredCount,
-            'message'       => "$expiredCount request(s) auto-expired."
+            'status'          => 200,
+            'expired_count'   => $expiredCount,
+            'completed_count' => $completedCount,
+            'message'         => "$expiredCount request(s) auto-expired, $completedCount request(s) auto-completed."
         ]);
     }
 

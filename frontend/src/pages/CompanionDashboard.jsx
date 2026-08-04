@@ -39,6 +39,11 @@ export default function CompanionDashboard({ user }) {
   const [healthAgreed, setHealthAgreed] = useState(false);
   // FCFS: Track 60-second withdraw countdown per job (keyed by request_id)
   const [withdrawCountdowns, setWithdrawCountdowns] = useState({});
+  // Onboarding: show modal if companion has never seen it
+  const [showOnboardingModal, setShowOnboardingModal] = useState(
+    user && parseInt(user.has_seen_onboarding) === 0
+  );
+  const [onboardingAgreed, setOnboardingAgreed] = useState(false);
 
   const fetchCompanionData = async (suppressTabSwitch = false) => {
     setLoading(true);
@@ -119,6 +124,13 @@ export default function CompanionDashboard({ user }) {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleOnboardingDone = async () => {
+    try {
+      await companionAPI.markOnboarded(user.id);
+    } catch (_) { /* silent — not critical */ }
+    setShowOnboardingModal(false);
+  };
 
   const handleApply = async (requestId) => {
     try {
@@ -362,9 +374,18 @@ export default function CompanionDashboard({ user }) {
                           </button>
                         )}
                         {duty.status === 'in_progress' && (
-                          <button onClick={() => handleCheckOut(duty.id)} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>
-                            ⏹ End Shift
-                          </button>
+                          <>
+                            <div style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: '0.5rem', background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.22)', borderRadius: '10px', padding: '0.55rem 0.75rem', marginBottom: '0.35rem', fontSize: '0.76rem', color: '#94a3b8', lineHeight: '1.5' }}>
+                              <span style={{ flexShrink: 0 }}>ℹ️</span>
+                              <span>
+                                <strong style={{ color: '#a78bfa' }}>Payout Policy:</strong> Payment is based on <strong style={{ color: '#f1f5f9' }}>scheduled shift hours only</strong> — early or late clock-in/out does not change your pay.{' '}
+                                <strong style={{ color: '#fbbf24' }}>⏰ Auto clock-out:</strong> If you forget to end your shift, the system will auto-complete it at the scheduled end time.
+                              </span>
+                            </div>
+                            <button onClick={() => handleCheckOut(duty.id)} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>
+                              ⏹ End Shift
+                            </button>
+                          </>
                         )}
                         {(duty.status === 'completed' || duty.status === 'cancelled') && (
                           <button
@@ -425,6 +446,17 @@ export default function CompanionDashboard({ user }) {
         {/* ── Tab: Open Opportunities ── */}
         {activeTab === 'jobs' && (
           <div className="animate-fade-in">
+            {/* ── Contextual Quick Rules Banner ── */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '12px', padding: '0.85rem 1.1rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '1rem', flexShrink: 0 }}>📋</span>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8', lineHeight: '1.65' }}>
+                <span style={{ fontWeight: '800', color: '#38bdf8', display: 'block', marginBottom: '0.2rem' }}>Quick Shift Rules — Please Read</span>
+                <span style={{ display: 'block' }}>⚡ <strong style={{ color: '#f1f5f9' }}>Auto-assigned immediately (FCFS)</strong> — First to apply gets the shift.</span>
+                <span style={{ display: 'block' }}>↩️ <strong style={{ color: '#fbbf24' }}>60-second withdraw window</strong> — You have 60s to withdraw if you applied by mistake.</span>
+                <span style={{ display: 'block' }}>⏳ <strong style={{ color: '#f87171' }}>Re-apply cooldown</strong> — After withdrawing, a cooldown period applies before you can re-apply.</span>
+                <span style={{ display: 'block' }}>💰 <strong style={{ color: '#34d399' }}>Fixed payout</strong> — Payment is based on scheduled shift hours, regardless of actual clock-in/out time.</span>
+              </div>
+            </div>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading opportunities...</div>
             ) : availableJobs.length === 0 ? (
@@ -734,6 +766,116 @@ export default function CompanionDashboard({ user }) {
                 }}
               >
                 ✓ Agree &amp; Submit Application
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ Onboarding Modal — First Login Only ══ */}
+      {showOnboardingModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem',
+          }}
+        >
+          <div
+            className="glass-panel animate-fade-in"
+            style={{ maxWidth: '560px', width: '100%', padding: '0', overflow: 'hidden', border: '1px solid rgba(56,189,248,0.3)' }}
+          >
+            {/* Header */}
+            <div style={{ padding: '1.5rem 1.75rem 1.25rem', borderBottom: '1px solid var(--border-color)', background: 'linear-gradient(135deg, rgba(56,189,248,0.12), rgba(139,92,246,0.08))' }}>
+              <div style={{ fontSize: '0.73rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem' }}>
+                🏥 HoSZA Hospital Companion Services
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', marginBottom: '0.3rem' }}>
+                📜 Companion System Rules
+              </h2>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                Before you begin, please read and acknowledge the following system rules. These govern how shifts, payments and applications work on this platform.
+              </p>
+            </div>
+
+            {/* Rules */}
+            <div style={{ padding: '1.25rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', maxHeight: '52vh', overflowY: 'auto' }}>
+              {/* Rule 1 */}
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: '12px', padding: '1rem' }}>
+                <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>💰</span>
+                <div>
+                  <div style={{ fontWeight: '800', color: '#34d399', fontSize: '0.88rem', marginBottom: '0.25rem' }}>Fixed Payment Policy</div>
+                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.55' }}>
+                    Your payout is calculated based on <strong style={{ color: '#f1f5f9' }}>scheduled shift hours only</strong>. Checking in early or staying late <strong style={{ color: '#f87171' }}>does not increase</strong> your payment.
+                  </div>
+                </div>
+              </div>
+
+              {/* Rule 2 */}
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: '12px', padding: '1rem' }}>
+                <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>⏰</span>
+                <div>
+                  <div style={{ fontWeight: '800', color: '#fbbf24', fontSize: '0.88rem', marginBottom: '0.25rem' }}>Auto Clock-Out</div>
+                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.55' }}>
+                    If you forget to clock out, the system will <strong style={{ color: '#f1f5f9' }}>automatically complete your shift</strong> at the scheduled end time. Always clock out manually when your duty is done.
+                  </div>
+                </div>
+              </div>
+
+              {/* Rule 3 */}
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: 'rgba(56,189,248,0.07)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '12px', padding: '1rem' }}>
+                <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>↩️</span>
+                <div>
+                  <div style={{ fontWeight: '800', color: '#38bdf8', fontSize: '0.88rem', marginBottom: '0.25rem' }}>60-Second Withdraw Window</div>
+                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.55' }}>
+                    After applying for a shift, you have exactly <strong style={{ color: '#f1f5f9' }}>60 seconds</strong> to withdraw if it was a mistake. After that window closes, <strong style={{ color: '#f87171' }}>you are committed</strong> to the shift.
+                  </div>
+                </div>
+              </div>
+
+              {/* Rule 4 */}
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: '12px', padding: '1rem' }}>
+                <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>⏳</span>
+                <div>
+                  <div style={{ fontWeight: '800', color: '#f87171', fontSize: '0.88rem', marginBottom: '0.25rem' }}>Re-Apply Cooldown Period</div>
+                  <div style={{ fontSize: '0.8rem', color: '#cbd5e1', lineHeight: '1.55' }}>
+                    If you withdraw from a shift, a <strong style={{ color: '#f1f5f9' }}>cooldown period</strong> applies before you can apply to that same shift again. This prevents abuse of the apply/withdraw cycle.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Acknowledgement + Button */}
+            <div style={{ padding: '1.1rem 1.75rem 1.5rem', borderTop: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.15)' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', cursor: 'pointer', marginBottom: '1.1rem' }}>
+                <input
+                  type="checkbox"
+                  checked={onboardingAgreed}
+                  onChange={e => setOnboardingAgreed(e.target.checked)}
+                  style={{ width: '18px', height: '18px', marginTop: '0.1rem', cursor: 'pointer', accentColor: '#38bdf8', flexShrink: 0 }}
+                />
+                <span style={{ fontSize: '0.82rem', color: '#e2e8f0', fontWeight: '600', lineHeight: '1.5' }}>
+                  I have read and fully understand all the system rules above. I agree to abide by the HoSZA Companion Service guidelines.
+                </span>
+              </label>
+              <button
+                disabled={!onboardingAgreed}
+                onClick={handleOnboardingDone}
+                style={{
+                  width: '100%', padding: '0.75rem', borderRadius: '12px', border: 'none',
+                  fontWeight: '800', fontSize: '0.9rem', cursor: onboardingAgreed ? 'pointer' : 'not-allowed',
+                  background: onboardingAgreed
+                    ? 'linear-gradient(135deg, #0284c7, #38bdf8)'
+                    : 'rgba(51,65,85,0.6)',
+                  color: onboardingAgreed ? '#fff' : 'var(--text-muted)',
+                  opacity: onboardingAgreed ? 1 : 0.6,
+                  transition: 'all 0.2s ease',
+                  letterSpacing: '0.02em'
+                }}
+              >
+                ✓ I Understand — Let's Go →
               </button>
             </div>
           </div>

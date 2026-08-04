@@ -463,4 +463,31 @@ class CompanionController extends ResourceController
             'data'          => $ratings
         ]);
     }
+
+    /**
+     * Mark companion as having seen the onboarding modal.
+     * Sets has_seen_onboarding = 1 so modal never shows again.
+     */
+    public function markOnboarded()
+    {
+        $companionId = $this->request->getVar('companion_id');
+
+        if (!$companionId) {
+            return $this->fail('companion_id is required.');
+        }
+
+        $userModel = new UserModel();
+        $user = $userModel->find($companionId);
+
+        if (!$user) {
+            return $this->failNotFound('User not found.');
+        }
+
+        $userModel->update($companionId, ['has_seen_onboarding' => 1]);
+
+        return $this->respond([
+            'status'  => 200,
+            'message' => 'Onboarding acknowledged.'
+        ]);
+    }
 }

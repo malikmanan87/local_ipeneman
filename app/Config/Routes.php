@@ -34,6 +34,7 @@ $routes->group('api', ['namespace' => 'App\Controllers\Api'], static function ($
     $routes->post('companion/check-out', 'CompanionController::checkOut');
     $routes->post('companion/add-note', 'CompanionController::addCareNote');
     $routes->get('companion/ratings/(:num)', 'CompanionController::getRatings/$1');
+    $routes->post('companion/mark-onboarded', 'CompanionController::markOnboarded');
 
     // Admin HoSZA Routes
     $routes->get('admin/stats', 'AdminController::stats');

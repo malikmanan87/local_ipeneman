@@ -22,7 +22,8 @@ class UserModel extends Model
         'role',
         'is_verified',
         'status',
-        'avatar'
+        'avatar',
+        'has_seen_onboarding'
     ];
 
     protected $useTimestamps = true;

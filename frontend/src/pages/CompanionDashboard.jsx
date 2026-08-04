@@ -6,12 +6,12 @@ import { showSuccess, showError, showConfirm } from '../utils/swal';
 import { formatTimeAMPM, formatShiftRange } from '../utils/formatTime';
 
 const STATUS_STYLE = {
-  assigned:    { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  label: '⚡ Assigned (FCFS)' },
+  assigned: { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)', label: '⚡ Assigned (FCFS)' },
   in_progress: { color: '#a78bfa', bg: 'rgba(139,92,246,0.15)', label: 'In Progress' },
-  completed:   { color: '#94a3b8', bg: 'rgba(100,116,139,0.15)',label: 'Completed' },
-  open:        { color: '#34d399', bg: 'rgba(5,150,105,0.15)',   label: 'Open' },
-  cancelled:   { color: '#f87171', bg: 'rgba(239,68,68,0.15)',  label: '🚫 Cancelled by Admin' },
-  expired:     { color: '#64748b', bg: 'rgba(100,116,139,0.15)', label: '⌛ Shift Expired' },
+  completed: { color: '#94a3b8', bg: 'rgba(100,116,139,0.15)', label: 'Completed' },
+  open: { color: '#34d399', bg: 'rgba(5,150,105,0.15)', label: 'Open' },
+  cancelled: { color: '#f87171', bg: 'rgba(239,68,68,0.15)', label: '🚫 Cancelled by Admin' },
+  expired: { color: '#64748b', bg: 'rgba(100,116,139,0.15)', label: '⌛ Shift Expired' },
 };
 
 function StatusBadge({ status }) {
@@ -44,7 +44,7 @@ export default function CompanionDashboard({ user }) {
     setLoading(true);
     try {
       // Auto-expire stale requests before loading
-      try { await requestAPI.autoExpire(); } catch (_) {}
+      try { await requestAPI.autoExpire(); } catch (_) { }
 
       const [jobsRes, dutiesRes, ratingsRes] = await Promise.all([
         requestAPI.getAvailable(user.gender, user.id),
@@ -52,7 +52,7 @@ export default function CompanionDashboard({ user }) {
         companionAPI.getRatings(user.id),
       ]);
 
-      const jobsList   = jobsRes.data.data || [];
+      const jobsList = jobsRes.data.data || [];
       const dutiesList = dutiesRes.data || [];
 
       // Build initial withdraw countdowns from availableJobs
@@ -65,10 +65,6 @@ export default function CompanionDashboard({ user }) {
           if (secsLeft > 0) {
             newCountdowns[job.id] = secsLeft;
           }
-        }
-        // Seed re-apply cooldown countdown (keyed cd_<id>) from backend
-        if (job.cooldown_seconds_left > 0) {
-          newCountdowns[`cd_${job.id}`] = job.cooldown_seconds_left;
         }
       });
       // Also seed from myDuties (assigned duties with withdraw window still open)
@@ -85,7 +81,7 @@ export default function CompanionDashboard({ user }) {
 
       // Smart Priority Auto-Selection (skip if suppressTabSwitch is true)
       if (!suppressTabSwitch) {
-        const activeCount    = dutiesList.filter(d => d.status === 'assigned' || d.status === 'in_progress').length;
+        const activeCount = dutiesList.filter(d => d.status === 'assigned' || d.status === 'in_progress').length;
         const completedCount = dutiesList.filter(d => d.status === 'completed').length;
 
         if (activeCount > 0) {
@@ -147,7 +143,7 @@ export default function CompanionDashboard({ user }) {
     if (!confirmed) return;
     try {
       await companionAPI.withdrawApplication({ request_id: requestId, companion_id: user.id });
-      setWithdrawCountdowns(prev => { const n = {...prev}; delete n[requestId]; return n; });
+      setWithdrawCountdowns(prev => { const n = { ...prev }; delete n[requestId]; return n; });
       await showSuccess('Withdrawn', 'Application withdrawn. Shift is now open again.');
       fetchCompanionData();
     } catch (err) {
@@ -281,11 +277,11 @@ export default function CompanionDashboard({ user }) {
                 {/* Status Filter Pills (Priority: Active 1st) */}
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   {[
-                    { key: 'active',    label: 'Active Duties',  count: activeDuties.length },
-                    { key: 'completed', label: 'Completed',      count: completedDuties.length },
-                    { key: 'cancelled', label: 'Cancelled',      count: cancelledDuties.length },
-                    { key: 'expired',   label: 'Expired',        count: expiredDuties.length },
-                    { key: 'all',       label: 'All Duties',     count: myDuties.length },
+                    { key: 'active', label: 'Active Duties', count: activeDuties.length },
+                    { key: 'completed', label: 'Completed', count: completedDuties.length },
+                    { key: 'cancelled', label: 'Cancelled', count: cancelledDuties.length },
+                    { key: 'expired', label: 'Expired', count: expiredDuties.length },
+                    { key: 'all', label: 'All Duties', count: myDuties.length },
                   ].map(f => (
                     <button
                       key={f.key}
@@ -313,113 +309,113 @@ export default function CompanionDashboard({ user }) {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
                   {filteredDuties.map(duty => (
-                  <div key={duty.id} className="glass-panel" style={{ padding: '1.5rem', borderLeft: `3px solid ${STATUS_STYLE[duty.status]?.color || '#94a3b8'}` }}>
-                    {/* Card Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <StatusBadge status={duty.status} />
-                      <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#f59e0b', fontWeight: '800' }}>{duty.request_code}</span>
-                    </div>
-
-                    {/* Info */}
-                    <h3 style={{ fontWeight: '800', fontSize: '1.05rem', marginBottom: '0.5rem' }}>
-                      {duty.ward_name}
-                    </h3>
-                    <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
-                      <p>🛏️ Bed: <strong style={{ color: '#f1f5f9' }}>{duty.bed_number}</strong></p>
-                      <p>👴 Patient: <strong style={{ color: '#f1f5f9' }}>{duty.patient_name}</strong> (Age {duty.patient_age})</p>
-                      <p>🗓️ Scheduled Shift: {duty.shift_date} ({formatShiftRange(duty.start_time, duty.end_time)})</p>
-                      {duty.duty_log && (duty.duty_log.check_in || duty.duty_log.check_out) && (
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.75rem', borderRadius: '8px', marginTop: '0.4rem', marginBottom: '0.4rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                          <p style={{ color: '#38bdf8', fontWeight: '700', fontSize: '0.78rem' }}>🕒 Actual Time Record:</p>
-                          <p style={{ fontSize: '0.76rem' }}>Check-In: <strong style={{ color: '#34d399' }}>{duty.duty_log.check_in || '—'}</strong></p>
-                          <p style={{ fontSize: '0.76rem' }}>Check-Out: <strong style={{ color: '#f87171' }}>{duty.duty_log.check_out || '—'}</strong></p>
-                          <p style={{ fontSize: '0.76rem', color: '#fbbf24', fontWeight: '700', marginTop: '0.15rem' }}>⏱️ Actual Worked Hours: {duty.actual_worked_hours} hrs</p>
-                        </div>
-                      )}
-                      <p style={{ marginTop: '0.25rem' }}>📌 {duty.task_details}</p>
-                    </div>
-
-                    {/* Actions */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                      <button
-                        onClick={() => setActiveDutyForPass(duty)}
-                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.08)', color: '#38bdf8', cursor: 'pointer', fontWeight: '700' }}
-                      >
-                        📱 Show E-Pass
-                      </button>
-                      {duty.status === 'assigned' && (duty.withdraw_seconds_left > 0 || withdrawCountdowns[duty.id] > 0) && (
-                        <div style={{ width: '100%' }}>
-                          <div style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.35)', borderRadius: '10px', padding: '0.6rem', marginBottom: '0.45rem', textAlign: 'center', fontSize: '0.8rem', color: '#fbbf24', fontWeight: '700' }}>
-                            ⚠️ Applied by mistake? Withdraw window closes in: <strong style={{ fontSize: '1rem' }}>{withdrawCountdowns[duty.id] || duty.withdraw_seconds_left}s</strong>
-                          </div>
-                          <button
-                            onClick={() => handleWithdraw(duty.id)}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', marginBottom: '0.45rem' }}
-                          >
-                            ⬅️ Withdraw Application ({withdrawCountdowns[duty.id] || duty.withdraw_seconds_left}s left)
-                          </button>
-                        </div>
-                      )}
-                      {duty.status === 'assigned' && (
-                        <button onClick={() => handleCheckIn(duty.id)} className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
-                          ▶ Check In
-                        </button>
-                      )}
-                      {duty.status === 'in_progress' && (
-                        <button onClick={() => handleCheckOut(duty.id)} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>
-                          ⏹ End Shift
-                        </button>
-                      )}
-                      {(duty.status === 'completed' || duty.status === 'cancelled') && (
-                        <button
-                          onClick={() => { setSelectedClaimDuty(duty); setShowClaimModal(true); }}
-                          style={{
-                            fontSize: '0.8rem',
-                            padding: '0.4rem 0.85rem',
-                            borderRadius: '8px',
-                            border: duty.status === 'cancelled' ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(52,211,153,0.4)',
-                            background: duty.status === 'cancelled' ? 'rgba(239,68,68,0.12)' : 'rgba(52,211,153,0.12)',
-                            color: duty.status === 'cancelled' ? '#f87171' : '#34d399',
-                            cursor: 'pointer',
-                            fontWeight: '700'
-                          }}
-                        >
-                          🧾 {duty.status === 'cancelled' ? 'Cancellation Receipt' : 'E-Claim Receipt'} (RM {duty.actual_total_payout !== undefined && duty.actual_total_payout !== null ? duty.actual_total_payout : (duty.status === 'cancelled' ? '0.00' : (parseFloat(duty.allowance_amount || 0) + parseFloat(duty.tip_amount || 0)).toFixed(2))})
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Patient Care Notes Component (Shows latest 2 notes + Read More modal) */}
-                    {duty.duty_log && (
-                      <CareNotesList
-                        notes={duty.duty_log.care_notes_list}
-                        shiftDate={duty.shift_date}
-                        title="📝 Patient Care Notes"
-                      />
-                    )}
-
-                    {duty.status === 'in_progress' && (
-                      <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-color)' }}>
-                        <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600', display: 'block', marginBottom: '0.35rem' }}>
-                          + Add Patient Care Note
-                        </label>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <input
-                            type="text"
-                            className="form-input"
-                            placeholder="e.g. Patient finished lunch"
-                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
-                            value={careNoteText[duty.id] || ''}
-                            onChange={e => setCareNoteText({ ...careNoteText, [duty.id]: e.target.value })}
-                          />
-                          <button onClick={() => handleAddNote(duty.id)} className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap' }}>
-                            Save
-                          </button>
-                        </div>
+                    <div key={duty.id} className="glass-panel" style={{ padding: '1.5rem', borderLeft: `3px solid ${STATUS_STYLE[duty.status]?.color || '#94a3b8'}` }}>
+                      {/* Card Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <StatusBadge status={duty.status} />
+                        <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#f59e0b', fontWeight: '800' }}>{duty.request_code}</span>
                       </div>
-                    )}
-                  </div>
-                ))}
+
+                      {/* Info */}
+                      <h3 style={{ fontWeight: '800', fontSize: '1.05rem', marginBottom: '0.5rem' }}>
+                        {duty.ward_name}
+                      </h3>
+                      <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
+                        <p>🛏️ Bed: <strong style={{ color: '#f1f5f9' }}>{duty.bed_number}</strong></p>
+                        <p>👴 Patient: <strong style={{ color: '#f1f5f9' }}>{duty.patient_name}</strong> (Age {duty.patient_age})</p>
+                        <p>🗓️ Scheduled Shift: {duty.shift_date} ({formatShiftRange(duty.start_time, duty.end_time)})</p>
+                        {duty.duty_log && (duty.duty_log.check_in || duty.duty_log.check_out) && (
+                          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.75rem', borderRadius: '8px', marginTop: '0.4rem', marginBottom: '0.4rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <p style={{ color: '#38bdf8', fontWeight: '700', fontSize: '0.78rem' }}>🕒 Actual Time Record:</p>
+                            <p style={{ fontSize: '0.76rem' }}>Check-In: <strong style={{ color: '#34d399' }}>{duty.duty_log.check_in || '—'}</strong></p>
+                            <p style={{ fontSize: '0.76rem' }}>Check-Out: <strong style={{ color: '#f87171' }}>{duty.duty_log.check_out || '—'}</strong></p>
+                            <p style={{ fontSize: '0.76rem', color: '#fbbf24', fontWeight: '700', marginTop: '0.15rem' }}>⏱️ Actual Worked Hours: {duty.actual_worked_hours} hrs</p>
+                          </div>
+                        )}
+                        <p style={{ marginTop: '0.25rem' }}>📌 {duty.task_details}</p>
+                      </div>
+
+                      {/* Actions */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                        <button
+                          onClick={() => setActiveDutyForPass(duty)}
+                          style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.08)', color: '#38bdf8', cursor: 'pointer', fontWeight: '700' }}
+                        >
+                          📱 Show E-Pass
+                        </button>
+                        {duty.status === 'assigned' && (duty.withdraw_seconds_left > 0 || withdrawCountdowns[duty.id] > 0) && (
+                          <div style={{ width: '100%' }}>
+                            <div style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.35)', borderRadius: '10px', padding: '0.6rem', marginBottom: '0.45rem', textAlign: 'center', fontSize: '0.8rem', color: '#fbbf24', fontWeight: '700' }}>
+                              ⚠️ Applied by mistake? Withdraw window closes in: <strong style={{ fontSize: '1rem' }}>{withdrawCountdowns[duty.id] || duty.withdraw_seconds_left}s</strong>
+                            </div>
+                            <button
+                              onClick={() => handleWithdraw(duty.id)}
+                              style={{ width: '100%', padding: '0.5rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', marginBottom: '0.45rem' }}
+                            >
+                              ⬅️ Withdraw Application ({withdrawCountdowns[duty.id] || duty.withdraw_seconds_left}s left)
+                            </button>
+                          </div>
+                        )}
+                        {duty.status === 'assigned' && (
+                          <button onClick={() => handleCheckIn(duty.id)} className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                            ▶ Check In
+                          </button>
+                        )}
+                        {duty.status === 'in_progress' && (
+                          <button onClick={() => handleCheckOut(duty.id)} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>
+                            ⏹ End Shift
+                          </button>
+                        )}
+                        {(duty.status === 'completed' || duty.status === 'cancelled') && (
+                          <button
+                            onClick={() => { setSelectedClaimDuty(duty); setShowClaimModal(true); }}
+                            style={{
+                              fontSize: '0.8rem',
+                              padding: '0.4rem 0.85rem',
+                              borderRadius: '8px',
+                              border: duty.status === 'cancelled' ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(52,211,153,0.4)',
+                              background: duty.status === 'cancelled' ? 'rgba(239,68,68,0.12)' : 'rgba(52,211,153,0.12)',
+                              color: duty.status === 'cancelled' ? '#f87171' : '#34d399',
+                              cursor: 'pointer',
+                              fontWeight: '700'
+                            }}
+                          >
+                            🧾 {duty.status === 'cancelled' ? 'Cancellation Receipt' : 'E-Claim Receipt'} (RM {duty.actual_total_payout !== undefined && duty.actual_total_payout !== null ? duty.actual_total_payout : (duty.status === 'cancelled' ? '0.00' : (parseFloat(duty.allowance_amount || 0) + parseFloat(duty.tip_amount || 0)).toFixed(2))})
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Patient Care Notes Component (Shows latest 2 notes + Read More modal) */}
+                      {duty.duty_log && (
+                        <CareNotesList
+                          notes={duty.duty_log.care_notes_list}
+                          shiftDate={duty.shift_date}
+                          title="📝 Patient Care Notes"
+                        />
+                      )}
+
+                      {duty.status === 'in_progress' && (
+                        <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-color)' }}>
+                          <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600', display: 'block', marginBottom: '0.35rem' }}>
+                            + Add Patient Care Note
+                          </label>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="e.g. Patient finished lunch"
+                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                              value={careNoteText[duty.id] || ''}
+                              onChange={e => setCareNoteText({ ...careNoteText, [duty.id]: e.target.value })}
+                            />
+                            <button onClick={() => handleAddNote(duty.id)} className="btn btn-primary" style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem', whiteSpace: 'nowrap' }}>
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -440,102 +436,78 @@ export default function CompanionDashboard({ user }) {
                 {availableJobs
                   .filter(job => job.patient_gender?.toUpperCase() === user.gender?.toUpperCase())
                   .map(job => {
-                  const total = (parseFloat(job.allowance_amount || 0) + parseFloat(job.tip_amount || 0)).toFixed(2);
-                  const hasTip = parseFloat(job.tip_amount) > 0;
-                  return (
-                    <div key={job.id} className="glass-panel" style={{ padding: '1.5rem', border: '1px solid var(--glass-border)', transition: 'border-color 0.2s ease' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                        <span style={{ padding: '0.22rem 0.65rem', borderRadius: '9999px', fontSize: '0.73rem', fontWeight: '800', background: job.patient_gender === 'L' ? 'rgba(59,130,246,0.15)' : 'rgba(236,72,153,0.15)', color: job.patient_gender === 'L' ? '#60a5fa' : '#f472b6' }}>
-                          {job.patient_gender === 'L' ? '🔵 Male Patient' : '🩷 Female Patient'}
-                        </span>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#34d399' }}>RM {total}</div>
-                          {hasTip && <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: '700' }}>🎁 incl. RM {parseFloat(job.tip_amount).toFixed(2)} tip</div>}
+                    const total = (parseFloat(job.allowance_amount || 0) + parseFloat(job.tip_amount || 0)).toFixed(2);
+                    const hasTip = parseFloat(job.tip_amount) > 0;
+                    return (
+                      <div key={job.id} className="glass-panel" style={{ padding: '1.5rem', border: '1px solid var(--glass-border)', transition: 'border-color 0.2s ease' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                          <span style={{ padding: '0.22rem 0.65rem', borderRadius: '9999px', fontSize: '0.73rem', fontWeight: '800', background: job.patient_gender === 'L' ? 'rgba(59,130,246,0.15)' : 'rgba(236,72,153,0.15)', color: job.patient_gender === 'L' ? '#60a5fa' : '#f472b6' }}>
+                            {job.patient_gender === 'L' ? '🔵 Male Patient' : '🩷 Female Patient'}
+                          </span>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#34d399' }}>RM {total}</div>
+                            {hasTip && <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: '700' }}>🎁 incl. RM {parseFloat(job.tip_amount).toFixed(2)} tip</div>}
+                          </div>
                         </div>
-                      </div>
 
-                      <h3 style={{ fontWeight: '800', fontSize: '1rem', marginBottom: '0.6rem' }}>{job.ward_name} (HoSZA)</h3>
-                      <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7', marginBottom: '1rem' }}>
-                        <p>🗓️ {job.shift_date} · {formatShiftRange(job.start_time, job.end_time)}</p>
-                        <p>👴 Patient Age: ~{job.patient_age} yrs</p>
-                        <p>📌 {job.task_details}</p>
-                      </div>
+                        <h3 style={{ fontWeight: '800', fontSize: '1rem', marginBottom: '0.6rem' }}>{job.ward_name} (HoSZA)</h3>
+                        <div style={{ fontSize: '0.83rem', color: 'var(--text-muted)', lineHeight: '1.7', marginBottom: '1rem' }}>
+                          <p>🗓️ {job.shift_date} · {formatShiftRange(job.start_time, job.end_time)}</p>
+                          <p>👴 Patient Age: ~{job.patient_age} yrs</p>
+                          <p>📌 {job.task_details}</p>
+                        </div>
 
-                      {job.has_applied && withdrawCountdowns[job.id] > 0 ? (
-                        <div>
-                          <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.35)', borderRadius: '10px', padding: '0.65rem', marginBottom: '0.5rem', textAlign: 'center' }}>
-                            <div style={{ color: '#34d399', fontWeight: '800', fontSize: '0.85rem' }}>⚡ Auto-Assigned! You are confirmed for this duty.</div>
-                            <div style={{ color: '#94a3b8', fontSize: '0.78rem', marginTop: '0.2rem' }}>
-                              Withdraw window closes in: <strong style={{ color: '#fbbf24', fontSize: '1rem' }}>{withdrawCountdowns[job.id]}s</strong>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleWithdraw(job.id)}
-                            style={{ width: '100%', padding: '0.5rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}
-                          >
-                            ⬅️ Withdraw Application ({withdrawCountdowns[job.id]}s left)
-                          </button>
-                        </div>
-                      ) : job.status === 'cancelled' ? (
-                        <div style={{ width: '100%', padding: '0.65rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', textAlign: 'center' }}>
-                          🚫 Duty Cancelled by Admin
-                          <div style={{ fontSize: '0.74rem', fontWeight: '600', opacity: 0.9, marginTop: '0.2rem' }}>
-                            Reason: {job.cancellation_reason || 'Cancelled by Admin'}
-                          </div>
-                        </div>
-                      ) : job.has_applied ? (
-                        <div>
-                          <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '10px', padding: '0.55rem', marginBottom: '0.5rem', textAlign: 'center', fontSize: '0.78rem', color: '#34d399', fontWeight: '700' }}>
-                            ⚡ You are assigned to this duty
-                          </div>
-                          <button
-                            onClick={() => { setActiveTab('duties'); setDutyFilter('active'); }}
-                            className="btn btn-primary"
-                            style={{ width: '100%', fontSize: '0.82rem', padding: '0.55rem' }}
-                          >
-                            ▶ Go to My Duties → Check In
-                          </button>
-                        </div>
-                      ) : job.cooldown_seconds_left > 0 ? (() => {
-                        // Live countdown using the seeded withdrawCountdowns or fallback to backend value
-                        const cdSecs = withdrawCountdowns[`cd_${job.id}`] ?? job.cooldown_seconds_left;
-                        const cdMins = Math.floor(cdSecs / 60);
-                        const cdRemSecs = cdSecs % 60;
-                        return (
+                        {job.has_applied && withdrawCountdowns[job.id] > 0 ? (
                           <div>
-                            <div style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: '10px', padding: '0.6rem', marginBottom: '0.5rem', textAlign: 'center' }}>
-                              <div style={{ color: '#fbbf24', fontWeight: '800', fontSize: '0.82rem' }}>🔒 Cooldown Period</div>
-                              <div style={{ color: '#94a3b8', fontSize: '0.76rem', marginTop: '0.2rem' }}>
-                                Re-apply available in:
-                              </div>
-                              <div style={{ color: '#fbbf24', fontWeight: '900', fontSize: '1.1rem', marginTop: '0.25rem' }}>
-                                {cdMins}m {String(cdRemSecs).padStart(2, '0')}s
+                            <div style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.35)', borderRadius: '10px', padding: '0.65rem', marginBottom: '0.5rem', textAlign: 'center' }}>
+                              <div style={{ color: '#34d399', fontWeight: '800', fontSize: '0.85rem' }}>⚡ Auto-Assigned! You are confirmed for this duty.</div>
+                              <div style={{ color: '#94a3b8', fontSize: '0.78rem', marginTop: '0.2rem' }}>
+                                Withdraw window closes in: <strong style={{ color: '#fbbf24', fontSize: '1rem' }}>{withdrawCountdowns[job.id]}s</strong>
                               </div>
                             </div>
                             <button
-                              disabled
-                              style={{ width: '100%', padding: '0.55rem', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#475569', fontWeight: '700', fontSize: '0.82rem', cursor: 'not-allowed' }}
+                              onClick={() => handleWithdraw(job.id)}
+                              style={{ width: '100%', padding: '0.5rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.35)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer' }}
                             >
-                              🔒 Apply Locked ({cdMins}m {String(cdRemSecs).padStart(2, '0')}s)
+                              ⬅️ Withdraw Application ({withdrawCountdowns[job.id]}s left)
                             </button>
                           </div>
-                        );
-                      })() : (
-                        <button
-                          onClick={() => {
-                            setSelectedJobForConsent(job);
-                            setHealthAgreed(false);
-                            setShowConsentModal(true);
-                          }}
-                          className="btn btn-primary"
-                          style={{ width: '100%', fontSize: '0.875rem' }}
-                        >
-                          🛡️ Health Declaration &amp; Apply
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                        ) : job.status === 'cancelled' ? (
+                          <div style={{ width: '100%', padding: '0.65rem', borderRadius: '10px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontWeight: '700', fontSize: '0.82rem', textAlign: 'center' }}>
+                            🚫 Duty Cancelled by Admin
+                            <div style={{ fontSize: '0.74rem', fontWeight: '600', opacity: 0.9, marginTop: '0.2rem' }}>
+                              Reason: {job.cancellation_reason || 'Cancelled by Admin'}
+                            </div>
+                          </div>
+                        ) : job.has_applied ? (
+                          <div>
+                            <div style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: '10px', padding: '0.55rem', marginBottom: '0.5rem', textAlign: 'center', fontSize: '0.78rem', color: '#34d399', fontWeight: '700' }}>
+                              ⚡ You are assigned to this duty
+                            </div>
+                            <button
+                              onClick={() => { setActiveTab('duties'); setDutyFilter('active'); }}
+                              className="btn btn-primary"
+                              style={{ width: '100%', fontSize: '0.82rem', padding: '0.55rem' }}
+                            >
+                              ▶ Go to My Duties → Check In
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setSelectedJobForConsent(job);
+                              setHealthAgreed(false);
+                              setShowConsentModal(true);
+                            }}
+                            className="btn btn-primary"
+                            style={{ width: '100%', fontSize: '0.875rem' }}
+                          >
+                            🛡️ Health Declaration &amp; Apply
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -612,7 +584,7 @@ export default function CompanionDashboard({ user }) {
                 <strong style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.2rem' }}>🚫 Shift Cancelled by Admin</strong>
                 <div><strong>Cancellation Reason:</strong> {selectedClaimDuty.cancellation_reason || 'Cancelled by Admin'}</div>
                 <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '0.35rem' }}>
-                  {parseFloat(selectedClaimDuty.actual_total_payout || 0) > 0 
+                  {parseFloat(selectedClaimDuty.actual_total_payout || 0) > 0
                     ? `💵 Pay Per Worked Hours Policy: Compensated RM ${selectedClaimDuty.actual_total_payout} for ${selectedClaimDuty.actual_worked_hours || '0.0'} hours worked prior to cancellation.`
                     : 'ℹ️ Shift cancelled before check-in (RM 0.00 payout).'}
                 </div>
@@ -636,7 +608,7 @@ export default function CompanionDashboard({ user }) {
                 <span style={{ color: 'var(--text-muted)' }}>Scheduled Shift:</span>
                 <span>{selectedClaimDuty.shift_date} ({formatShiftRange(selectedClaimDuty.start_time, selectedClaimDuty.end_time)})</span>
               </div>
-              
+
               {/* Actual Check-In & Check-Out Timestamps */}
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
@@ -702,7 +674,7 @@ export default function CompanionDashboard({ user }) {
               <div style={{ fontWeight: '700', color: '#38bdf8', marginBottom: '0.5rem', fontSize: '0.82rem', textTransform: 'uppercase' }}>
                 📋 Shift Details: {selectedJobForConsent.ward_name} ({selectedJobForConsent.shift_date})
               </div>
-              
+
               <div style={{ color: '#e2e8f0', fontSize: '0.82rem', marginTop: '0.5rem' }}>
                 <p style={{ fontWeight: '700', color: '#fbbf24', marginBottom: '0.35rem' }}>1. Health &amp; Wellness Self-Declaration:</p>
                 <ul style={{ paddingLeft: '1.2rem', margin: '0 0 0.75rem 0', color: '#cbd5e1', lineHeight: '1.5' }}>

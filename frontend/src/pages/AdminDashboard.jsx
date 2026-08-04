@@ -4,22 +4,21 @@ import CareNotesList from '../components/CareNotesList';
 import Swal from 'sweetalert2';
 import { showSuccess, showError, showWarning, showConfirm } from '../utils/swal';
 import { formatTimeAMPM, formatShiftRange } from '../utils/formatTime';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const ROLE_CONFIG = {
-  companion: { label: 'Companion',     color: '#34d399', bg: 'rgba(5,150,105,0.18)',  icon: '👨‍🦱' },
-  user:      { label: 'Patient/Family',color: '#38bdf8', bg: 'rgba(2,132,199,0.18)',  icon: '👨‍👩‍👧' },
-  staff:     { label: 'Ward Nurse',    color: '#f59e0b', bg: 'rgba(245,158,11,0.18)', icon: '🩺' },
-  admin:     { label: 'Admin',         color: '#a78bfa', bg: 'rgba(139,92,246,0.18)', icon: '👑' },
+  companion: { label: 'Companion', color: '#34d399', bg: 'rgba(5,150,105,0.18)', icon: '👨‍🦱' },
+  user: { label: 'Patient/Family', color: '#38bdf8', bg: 'rgba(2,132,199,0.18)', icon: '👨‍👩‍👧' },
+  staff: { label: 'Ward Nurse', color: '#f59e0b', bg: 'rgba(245,158,11,0.18)', icon: '🩺' },
+  admin: { label: 'Admin', color: '#a78bfa', bg: 'rgba(139,92,246,0.18)', icon: '👑' },
 };
 
 const STATUS_BADGE = {
-  open:        { label: 'Open',           color: '#34d399', bg: 'rgba(5,150,105,0.15)' },
-  assigned:    { label: '⚡ Assigned (FCFS)', color: '#fbbf24', bg: 'rgba(245,158,11,0.15)' },
-  in_progress: { label: 'In Progress',    color: '#a78bfa', bg: 'rgba(139,92,246,0.15)' },
-  completed:   { label: 'Completed',      color: '#94a3b8', bg: 'rgba(100,116,139,0.15)' },
-  cancelled:   { label: 'Cancelled',      color: '#f87171', bg: 'rgba(239,68,68,0.15)' },
-  expired:     { label: '⌛ Expired',      color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
+  open: { label: 'Open', color: '#34d399', bg: 'rgba(5,150,105,0.15)' },
+  assigned: { label: '⚡ Assigned (FCFS)', color: '#fbbf24', bg: 'rgba(245,158,11,0.15)' },
+  in_progress: { label: 'In Progress', color: '#a78bfa', bg: 'rgba(139,92,246,0.15)' },
+  completed: { label: 'Completed', color: '#94a3b8', bg: 'rgba(100,116,139,0.15)' },
+  cancelled: { label: 'Cancelled', color: '#f87171', bg: 'rgba(239,68,68,0.15)' },
+  expired: { label: '⌛ Expired', color: '#64748b', bg: 'rgba(100,116,139,0.12)' },
 };
 
 function SectionBadge({ status }) {
@@ -97,8 +96,6 @@ export default function AdminDashboard({ user }) {
   const [roleFilter, setRoleFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('open');
   const [financeFilter, setFinanceFilter] = useState('all');
-  const [ledgerPage, setLedgerPage] = useState(1);
-  const LEDGER_PAGE_SIZE = 10;
   const [requests, setRequests] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [unverifiedUsers, setUnverifiedUsers] = useState([]);
@@ -252,9 +249,9 @@ export default function AdminDashboard({ user }) {
   };
 
   const handleToggleUserStatus = async (targetUserId, targetUserName, currentStatus) => {
-    const newStatus   = currentStatus === 'inactive' ? 'active' : 'inactive';
+    const newStatus = currentStatus === 'inactive' ? 'active' : 'inactive';
     const actionLabel = newStatus === 'inactive' ? 'Deactivate' : 'Activate';
-    const warningMsg  = newStatus === 'inactive'
+    const warningMsg = newStatus === 'inactive'
       ? `Deactivate account for "${targetUserName}"? Inactive users will NOT be able to log into the system.`
       : `Activate account for "${targetUserName}"? User will regain login access to the system.`;
 
@@ -350,11 +347,11 @@ export default function AdminDashboard({ user }) {
 
   // Accurate counts from actual allUsers list
   const userCounts = {
-    all:       allUsers.length,
+    all: allUsers.length,
     companion: allUsers.filter(u => u.role === 'companion').length,
-    user:      allUsers.filter(u => u.role === 'user').length,
-    staff:     allUsers.filter(u => u.role === 'staff').length,
-    admin:     allUsers.filter(u => u.role === 'admin').length,
+    user: allUsers.filter(u => u.role === 'user').length,
+    staff: allUsers.filter(u => u.role === 'staff').length,
+    admin: allUsers.filter(u => u.role === 'admin').length,
   };
 
   const filteredUsers = allUsers.filter(u => {
@@ -363,10 +360,10 @@ export default function AdminDashboard({ user }) {
   });
 
   const TABS = [
-    { key: 'requests',      label: 'Ward Requests',    icon: '📋', count: requests.length,        color: '#f59e0b' },
-    { key: 'active_duties', label: 'Active Shifts',    icon: '🔄', count: activeDutiesList.length, color: '#34d399' },
-    { key: 'approvals',     label: 'Pending Approvals',icon: '🔔', count: unverifiedUsers.length,  color: '#f472b6' },
-    { key: 'users',         label: 'Total Users',      icon: '👥', count: allUsers.length,         color: '#38bdf8' },
+    { key: 'requests', label: 'Ward Requests', icon: '📋', count: requests.length, color: '#f59e0b' },
+    { key: 'active_duties', label: 'Active Shifts', icon: '🔄', count: activeDutiesList.length, color: '#34d399' },
+    { key: 'approvals', label: 'Pending Approvals', icon: '🔔', count: unverifiedUsers.length, color: '#f472b6' },
+    { key: 'users', label: 'Total Users', icon: '👥', count: allUsers.length, color: '#38bdf8' },
   ];
 
   return (
@@ -493,82 +490,8 @@ export default function AdminDashboard({ user }) {
             return true;
           });
 
-          const donutData = [
-            { name: 'Open',        value: statusCounts.open,        color: '#34d399' },
-            { name: 'Assigned',    value: statusCounts.in_progress, color: '#fbbf24' },
-            { name: 'Completed',   value: statusCounts.completed,   color: '#38bdf8' },
-            { name: 'Cancelled',   value: statusCounts.cancelled,   color: '#f87171' },
-            { name: 'Expired',     value: statusCounts.expired,     color: '#64748b' },
-          ].filter(d => d.value > 0);
-
-          const CustomTooltip = ({ active, payload }) => {
-            if (active && payload && payload.length) {
-              const d = payload[0];
-              return (
-                <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '0.65rem 1rem', fontSize: '0.82rem', color: '#f1f5f9' }}>
-                  <div style={{ fontWeight: '800', color: d.payload.color }}>{d.name}</div>
-                  <div style={{ marginTop: '0.2rem' }}>{d.value} shift{d.value !== 1 ? 's' : ''} &nbsp;<span style={{ color: '#94a3b8' }}>({((d.value / statusCounts.all) * 100).toFixed(1)}%)</span></div>
-                </div>
-              );
-            }
-            return null;
-          };
-
           return (
-            <div className="animate-fade-in">
-              {/* ── Donut Chart Panel ── */}
-              <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.25rem' }}>
-                <div style={{ marginBottom: '1rem' }}>
-                  <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#f1f5f9' }}>🍩 Shift Status Overview</h2>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{statusCounts.all} total shifts recorded</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
-                  {/* Donut */}
-                  <div style={{ flex: '0 0 220px', height: '220px' }}>
-                    {donutData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={donutData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={65}
-                            outerRadius={100}
-                            paddingAngle={3}
-                            dataKey="value"
-                            strokeWidth={0}
-                          >
-                            {donutData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip content={<CustomTooltip />} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No data yet</div>
-                    )}
-                  </div>
-                  {/* Legend */}
-                  <div style={{ flex: '1', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '0.75rem' }}>
-                    {[
-                      { label: 'Open',      count: statusCounts.open,        color: '#34d399', icon: '🟢' },
-                      { label: 'Assigned',  count: statusCounts.in_progress, color: '#fbbf24', icon: '⚡' },
-                      { label: 'Completed', count: statusCounts.completed,   color: '#38bdf8', icon: '✅' },
-                      { label: 'Cancelled', count: statusCounts.cancelled,   color: '#f87171', icon: '🚫' },
-                      { label: 'Expired',   count: statusCounts.expired,     color: '#64748b', icon: '⌛' },
-                    ].map(item => (
-                      <div key={item.label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '10px', padding: '0.75rem 1rem', borderLeft: `3px solid ${item.color}` }}>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', marginBottom: '0.25rem' }}>{item.icon} {item.label}</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: '900', color: item.color, lineHeight: 1 }}>{item.count}</div>
-                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
-                          {statusCounts.all > 0 ? ((item.count / statusCounts.all) * 100).toFixed(1) : 0}%
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
               <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
                   <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 Ward Requests Overview</h2>
@@ -577,12 +500,12 @@ export default function AdminDashboard({ user }) {
                 {/* Status Filter Pills */}
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                   {[
-                    { key: 'open',        label: 'Open',        count: statusCounts.open },
+                    { key: 'open', label: 'Open', count: statusCounts.open },
                     { key: 'in_progress', label: 'In Progress', count: statusCounts.in_progress },
-                    { key: 'completed',   label: 'Completed',   count: statusCounts.completed },
-                    { key: 'cancelled',   label: 'Cancelled',   count: statusCounts.cancelled },
-                    { key: 'expired',     label: '⌛ Expired',   count: statusCounts.expired },
-                    { key: 'all',         label: 'All',         count: statusCounts.all },
+                    { key: 'completed', label: 'Completed', count: statusCounts.completed },
+                    { key: 'cancelled', label: 'Cancelled', count: statusCounts.cancelled },
+                    { key: 'expired', label: '⌛ Expired', count: statusCounts.expired },
+                    { key: 'all', label: 'All', count: statusCounts.all },
                   ].map(f => (
                     <button
                       key={f.key}
@@ -692,11 +615,6 @@ export default function AdminDashboard({ user }) {
             return true;
           });
 
-          const ledgerTotalPages = Math.max(1, Math.ceil(filteredFinanceRequests.length / LEDGER_PAGE_SIZE));
-          const ledgerSafeCurrentPage = Math.min(ledgerPage, ledgerTotalPages);
-          const ledgerStart = (ledgerSafeCurrentPage - 1) * LEDGER_PAGE_SIZE;
-          const pagedFinanceRequests = filteredFinanceRequests.slice(ledgerStart, ledgerStart + LEDGER_PAGE_SIZE);
-
           // Accurate dynamic calculations directly from requests array
           const completedPayoutCalc = requests
             .filter(r => r.status === 'completed')
@@ -718,59 +636,12 @@ export default function AdminDashboard({ user }) {
             .filter(r => r.status !== 'cancelled')
             .reduce((sum, r) => sum + parseFloat(r.tip_amount || 0), 0);
 
-          // ── Monthly Payout Bar Chart data (last 6 months, completed shifts only) ──
-          const monthlyPayoutData = (() => {
-            const months = {};
-            // Seed last 6 months with zero values
-            for (let i = 5; i >= 0; i--) {
-              const d = new Date();
-              d.setDate(1);
-              d.setMonth(d.getMonth() - i);
-              const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-              const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-              months[key] = { month: label, base: 0, tips: 0, total: 0 };
-            }
-            requests
-              .filter(r => r.status === 'completed' && r.shift_date)
-              .forEach(r => {
-                const key = r.shift_date.slice(0, 7); // YYYY-MM
-                if (months[key]) {
-                  const base = parseFloat(r.allowance_amount || 0);
-                  const tip  = parseFloat(r.tip_amount || 0);
-                  months[key].base  += base;
-                  months[key].tips  += tip;
-                  months[key].total += base + tip;
-                }
-              });
-            return Object.values(months);
-          })();
-
-          const BarTooltip = ({ active, payload, label }) => {
-            if (active && payload && payload.length) {
-              const total = payload.reduce((s, p) => s + (p.value || 0), 0);
-              return (
-                <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '0.65rem 1rem', fontSize: '0.82rem', color: '#f1f5f9' }}>
-                  <div style={{ fontWeight: '800', marginBottom: '0.3rem' }}>{label}</div>
-                  {payload.map(p => (
-                    <div key={p.name} style={{ color: p.fill, fontWeight: '700' }}>
-                      {p.name}: RM {p.value.toFixed(2)}
-                    </div>
-                  ))}
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '0.35rem', paddingTop: '0.35rem', color: '#34d399', fontWeight: '900' }}>
-                    Total: RM {total.toFixed(2)}
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          };
-
           return (
             <div className="animate-fade-in">
               {/* Unified Financial Summary Panel with Separators */}
               <div className="glass-panel" style={{ padding: '1.25rem 1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid #34d399' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', alignItems: 'center' }}>
-                  
+
                   {/* Item 1: Disbursed Payout */}
                   <div style={{ paddingRight: '0.5rem' }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Disbursed Payout</div>
@@ -819,55 +690,27 @@ export default function AdminDashboard({ user }) {
                 </div>
               </div>
 
-              {/* ── Monthly Payout Bar Chart ── */}
-              <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '1.25rem' }}>
-                <div style={{ marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div>
-                    <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#f1f5f9' }}>📈 Monthly Payout Trend</h2>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Base allowance + tips — completed shifts only (last 6 months)</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', fontWeight: '700' }}>
-                    <span style={{ color: '#34d399' }}>■ Base Allowance</span>
-                    <span style={{ color: '#a78bfa' }}>■ Tips</span>
-                  </div>
-                </div>
-                <div style={{ height: '240px' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlyPayoutData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }} barSize={32}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={v => `RM${v}`} tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
-                      <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                      <Bar dataKey="base" name="Base Allowance" stackId="payout" fill="#34d399" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="tips" name="Tips" stackId="payout" fill="#a78bfa" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
               {/* Main Ledger Table Panel */}
               <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div>
                     <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>💵 HoSZA Shift Financial Ledger</h2>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                      Showing {ledgerStart + 1}–{Math.min(ledgerStart + LEDGER_PAGE_SIZE, filteredFinanceRequests.length)} of {filteredFinanceRequests.length} shift transactions
-                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Showing {filteredFinanceRequests.length} shift transactions</div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     {/* Status Filter Pills */}
                     <div style={{ display: 'flex', gap: '0.35rem' }}>
                       {[
-                        { key: 'all',       label: 'All Shifts' },
+                        { key: 'all', label: 'All Shifts' },
                         { key: 'completed', label: 'Disbursed' },
-                        { key: 'pending',   label: 'Pending' },
-                        { key: 'open',      label: 'Unassigned' },
+                        { key: 'pending', label: 'Pending' },
+                        { key: 'open', label: 'Unassigned' },
                         { key: 'cancelled', label: 'Cancelled' },
                       ].map(f => (
                         <button
                           key={f.key}
-                          onClick={() => { setFinanceFilter(f.key); setLedgerPage(1); }}
+                          onClick={() => setFinanceFilter(f.key)}
                           style={{
                             padding: '0.35rem 0.8rem', borderRadius: '9999px', fontSize: '0.78rem',
                             fontWeight: '700', cursor: 'pointer',
@@ -905,15 +748,14 @@ export default function AdminDashboard({ user }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {pagedFinanceRequests.map((req, i) => {
-                          const rowNum = ledgerStart + i + 1;
+                        {filteredFinanceRequests.map((req, i) => {
                           const base = parseFloat(req.allowance_amount || 0);
                           const tip = parseFloat(req.tip_amount || 0);
                           const total = base + tip;
 
                           return (
                             <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                              <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{rowNum}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
                               <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
                               <td style={{ padding: '0.85rem 1rem' }}>
                                 {req.companion ? (
@@ -954,60 +796,6 @@ export default function AdminDashboard({ user }) {
                         })}
                       </tbody>
                     </table>
-                  </div>
-                )}
-
-                {/* ── Pagination Bar ── */}
-                {filteredFinanceRequests.length > LEDGER_PAGE_SIZE && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '0.65rem' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Page <strong style={{ color: '#f1f5f9' }}>{ledgerSafeCurrentPage}</strong> of <strong style={{ color: '#f1f5f9' }}>{ledgerTotalPages}</strong>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                      <button
-                        onClick={() => setLedgerPage(1)}
-                        disabled={ledgerSafeCurrentPage === 1}
-                        style={{ padding: '0.35rem 0.7rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: ledgerSafeCurrentPage === 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === 1 ? '#475569' : '#f1f5f9', cursor: ledgerSafeCurrentPage === 1 ? 'not-allowed' : 'pointer' }}
-                      >« First</button>
-                      <button
-                        onClick={() => setLedgerPage(p => Math.max(1, p - 1))}
-                        disabled={ledgerSafeCurrentPage === 1}
-                        style={{ padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: ledgerSafeCurrentPage === 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === 1 ? '#475569' : '#f1f5f9', cursor: ledgerSafeCurrentPage === 1 ? 'not-allowed' : 'pointer' }}
-                      >‹ Prev</button>
-
-                      {/* Page number buttons */}
-                      {Array.from({ length: ledgerTotalPages }, (_, idx) => idx + 1)
-                        .filter(pg => pg === 1 || pg === ledgerTotalPages || Math.abs(pg - ledgerSafeCurrentPage) <= 2)
-                        .reduce((acc, pg, idx, arr) => {
-                          if (idx > 0 && pg - arr[idx - 1] > 1) acc.push('...');
-                          acc.push(pg);
-                          return acc;
-                        }, [])
-                        .map((pg, idx) => pg === '...' ? (
-                          <span key={`ellipsis-${idx}`} style={{ padding: '0.35rem 0.3rem', color: '#475569', fontSize: '0.78rem' }}>…</span>
-                        ) : (
-                          <button
-                            key={pg}
-                            onClick={() => setLedgerPage(pg)}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '800', border: '1px solid', borderColor: ledgerSafeCurrentPage === pg ? '#34d399' : 'var(--glass-border)', background: ledgerSafeCurrentPage === pg ? '#34d399' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === pg ? '#0f172a' : '#f1f5f9', cursor: 'pointer', minWidth: '2rem' }}
-                          >{pg}</button>
-                        ))
-                      }
-
-                      <button
-                        onClick={() => setLedgerPage(p => Math.min(ledgerTotalPages, p + 1))}
-                        disabled={ledgerSafeCurrentPage === ledgerTotalPages}
-                        style={{ padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: ledgerSafeCurrentPage === ledgerTotalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === ledgerTotalPages ? '#475569' : '#f1f5f9', cursor: ledgerSafeCurrentPage === ledgerTotalPages ? 'not-allowed' : 'pointer' }}
-                      >Next ›</button>
-                      <button
-                        onClick={() => setLedgerPage(ledgerTotalPages)}
-                        disabled={ledgerSafeCurrentPage === ledgerTotalPages}
-                        style={{ padding: '0.35rem 0.7rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: ledgerSafeCurrentPage === ledgerTotalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: ledgerSafeCurrentPage === ledgerTotalPages ? '#475569' : '#f1f5f9', cursor: ledgerSafeCurrentPage === ledgerTotalPages ? 'not-allowed' : 'pointer' }}
-                      >Last »</button>
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      {filteredFinanceRequests.length} total records
-                    </div>
                   </div>
                 )}
               </div>
@@ -1116,11 +904,11 @@ export default function AdminDashboard({ user }) {
               {/* Role filter pills — counts from actual allUsers array */}
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 {[
-                  { key: 'all',       label: 'All',        count: userCounts.all       },
-                  { key: 'companion', label: 'Companions',  count: userCounts.companion },
-                  { key: 'user',      label: 'Family',      count: userCounts.user      },
-                  { key: 'staff',     label: 'Staff',       count: userCounts.staff     },
-                  { key: 'admin',     label: 'Admin',       count: userCounts.admin     },
+                  { key: 'all', label: 'All', count: userCounts.all },
+                  { key: 'companion', label: 'Companions', count: userCounts.companion },
+                  { key: 'user', label: 'Family', count: userCounts.user },
+                  { key: 'staff', label: 'Staff', count: userCounts.staff },
+                  { key: 'admin', label: 'Admin', count: userCounts.admin },
                 ].map(f => (
                   <button
                     key={f.key}

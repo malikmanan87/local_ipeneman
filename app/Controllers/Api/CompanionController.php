@@ -78,23 +78,6 @@ class CompanionController extends ResourceController
 
         $appModel = new ApplicationModel();
 
-        // ── 30-Minute Re-Apply Cooldown ──
-        // If companion withdrew from this request within the last 30 minutes, block re-apply.
-        $lastWithdrawal = $appModel->where('request_id', $requestId)
-                                   ->where('companion_id', $companionId)
-                                   ->where('status', 'withdrawn')
-                                   ->orderBy('id', 'DESC')
-                                   ->first();
-
-        if ($lastWithdrawal && !empty($lastWithdrawal['withdrawn_at'])) {
-            $cooldownSeconds = 1800; // 30 minutes
-            $secondsSince    = time() - strtotime($lastWithdrawal['withdrawn_at']);
-            if ($secondsSince < $cooldownSeconds) {
-                $minsLeft = ceil(($cooldownSeconds - $secondsSince) / 60);
-                return $this->failForbidden("You withdrew from this shift. Please wait {$minsLeft} minute(s) before re-applying.");
-            }
-        }
-
         // Prevent duplicate application
         $existing = $appModel->where('request_id', $requestId)
                              ->where('companion_id', $companionId)

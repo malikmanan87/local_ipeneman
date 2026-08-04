@@ -90,12 +90,76 @@ function VerifyPassResult({ result }) {
   );
 }
 
+function PaginationControl({ currentPage, totalPages, totalItems, pageSize, onPageChange }) {
+  if (totalItems <= pageSize) return null;
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '0.65rem' }}>
+      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        Page <strong style={{ color: '#f1f5f9' }}>{currentPage}</strong> of <strong style={{ color: '#f1f5f9' }}>{totalPages}</strong>
+      </div>
+      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+          style={{ padding: '0.35rem 0.7rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: currentPage === 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: currentPage === 1 ? '#475569' : '#f1f5f9', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+        >« First</button>
+        <button
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          style={{ padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: currentPage === 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: currentPage === 1 ? '#475569' : '#f1f5f9', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+        >‹ Prev</button>
+
+        {Array.from({ length: totalPages }, (_, idx) => idx + 1)
+          .filter(pg => pg === 1 || pg === totalPages || Math.abs(pg - currentPage) <= 2)
+          .reduce((acc, pg, idx, arr) => {
+            if (idx > 0 && pg - arr[idx - 1] > 1) acc.push('...');
+            acc.push(pg);
+            return acc;
+          }, [])
+          .map((pg, idx) => pg === '...' ? (
+            <span key={`ellipsis-${idx}`} style={{ padding: '0.35rem 0.3rem', color: '#475569', fontSize: '0.78rem' }}>…</span>
+          ) : (
+            <button
+              key={pg}
+              onClick={() => onPageChange(pg)}
+              style={{ padding: '0.35rem 0.7rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '800', border: '1px solid', borderColor: currentPage === pg ? '#38bdf8' : 'var(--glass-border)', background: currentPage === pg ? '#38bdf8' : 'rgba(255,255,255,0.07)', color: currentPage === pg ? '#0f172a' : '#f1f5f9', cursor: 'pointer', minWidth: '2rem' }}
+            >{pg}</button>
+          ))
+        }
+
+        <button
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          style={{ padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: currentPage === totalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: currentPage === totalPages ? '#475569' : '#f1f5f9', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+        >Next ›</button>
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+          style={{ padding: '0.35rem 0.7rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', border: '1px solid var(--glass-border)', background: currentPage === totalPages ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)', color: currentPage === totalPages ? '#475569' : '#f1f5f9', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+        >Last »</button>
+      </div>
+      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+        Showing {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, totalItems)} of {totalItems} records
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard({ user }) {
   const [stats, setStats] = useState({ total_users: 0, total_companions: 0, total_families: 0, total_staff: 0, pending_approvals: 0, total_requests: 0, active_duties: 0 });
   const [activeTab, setActiveTab] = useState('requests');
   const [roleFilter, setRoleFilter] = useState('all');
   const [requestStatusFilter, setRequestStatusFilter] = useState('open');
   const [financeFilter, setFinanceFilter] = useState('all');
+
+  const [requestPage, setRequestPage] = useState(1);
+  const [financePage, setFinancePage] = useState(1);
+  const [activeDutiesPage, setActiveDutiesPage] = useState(1);
+  const [approvalsPage, setApprovalsPage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
+  const PAGE_SIZE = 10;
+
   const [requests, setRequests] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [unverifiedUsers, setUnverifiedUsers] = useState([]);
@@ -490,12 +554,19 @@ export default function AdminDashboard({ user }) {
             return true;
           });
 
+          const requestTotalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE));
+          const requestSafePage = Math.min(requestPage, requestTotalPages);
+          const requestStart = (requestSafePage - 1) * PAGE_SIZE;
+          const pagedRequests = filteredRequests.slice(requestStart, requestStart + PAGE_SIZE);
+
           return (
             <div className="glass-panel animate-fade-in" style={{ padding: '0', overflow: 'hidden' }}>
               <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
                   <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>📋 Ward Requests Overview</h2>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Showing {filteredRequests.length} of {requests.length} requests</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                    Showing {filteredRequests.length > 0 ? requestStart + 1 : 0}–{Math.min(requestStart + PAGE_SIZE, filteredRequests.length)} of {filteredRequests.length} requests
+                  </div>
                 </div>
                 {/* Status Filter Pills */}
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -509,7 +580,7 @@ export default function AdminDashboard({ user }) {
                   ].map(f => (
                     <button
                       key={f.key}
-                      onClick={() => setRequestStatusFilter(f.key)}
+                      onClick={() => { setRequestStatusFilter(f.key); setRequestPage(1); }}
                       style={{
                         padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
                         fontWeight: '700', cursor: 'pointer',
@@ -528,78 +599,87 @@ export default function AdminDashboard({ user }) {
               ) : filteredRequests.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No ward requests found for this filter.</div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
-                    <thead>
-                      <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                        {['No.', 'Pass Code', 'Creator', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Payout (RM)', 'Status', ''].map(h => (
-                          <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRequests.map((req, i) => (
-                        <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
-                          <td style={{ padding: '0.85rem 1rem' }}>
-                            {req.created_by_role === 'admin'
-                              ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>HoSZA On-Behalf</span>
-                              : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#38bdf8', background: 'rgba(56,189,248,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>Patient Family</span>
-                            }
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem' }}>
-                            <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
-                            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.patient_rn} · {req.patient_gender === 'L' ? '🔵 Male' : '🩷 Female'}</div>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem' }}>
-                            <div>{req.ward_name}</div>
-                            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.bed_number}</div>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                            <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatShiftRange(req.start_time, req.end_time)}</div>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#34d399', fontFamily: 'monospace' }}>
-                            RM {(parseFloat(req.allowance_amount || 0) + parseFloat(req.tip_amount || 0)).toFixed(2)}
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem' }}>
-                            <SectionBadge status={req.status} />
-                            {req.cancellation_reason && (
-                              <div style={{ fontSize: '0.73rem', color: '#f87171', marginTop: '0.25rem', fontWeight: '600', maxWidth: '160px' }}>
-                                💬 {req.cancellation_reason}
-                              </div>
-                            )}
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem' }}>
-                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              <button
-                                onClick={() => { setSelectedDetailRequest(req); setShowDetailModal(true); }}
-                                style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.08)', color: '#38bdf8', cursor: 'pointer', fontWeight: '700' }}
-                              >
-                                📄 Details
-                              </button>
-                              <button
-                                onClick={() => { setInputPassCode(req.request_code); setVerificationResult(null); setShowVerifyPassModal(true); }}
-                                style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.08)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
-                              >
-                                🔍 Pass
-                              </button>
-                              {req.status !== 'completed' && req.status !== 'cancelled' && req.status !== 'expired' && (
-                                <button
-                                  onClick={() => handleCancelRequest(req.id)}
-                                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.1)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}
-                                >
-                                  🚫 Cancel
-                                </button>
-                              )}
-                            </div>
-                          </td>
+                <>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                          {['No.', 'Pass Code', 'Creator', 'Patient (RN)', 'Ward & Bed', 'Shift', 'Payout (RM)', 'Status', ''].map(h => (
+                            <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {pagedRequests.map((req, i) => (
+                          <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                            <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{requestStart + i + 1}</td>
+                            <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              {req.created_by_role === 'admin'
+                                ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>HoSZA On-Behalf</span>
+                                : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#38bdf8', background: 'rgba(56,189,248,0.1)', padding: '0.2rem 0.55rem', borderRadius: '6px' }}>Patient Family</span>
+                              }
+                            </td>
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
+                              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.patient_rn} · {req.patient_gender === 'L' ? '🔵 Male' : '🩷 Female'}</div>
+                            </td>
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <div>{req.ward_name}</div>
+                              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.bed_number}</div>
+                            </td>
+                            <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatShiftRange(req.start_time, req.end_time)}</div>
+                            </td>
+                            <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#34d399', fontFamily: 'monospace' }}>
+                              RM {(parseFloat(req.allowance_amount || 0) + parseFloat(req.tip_amount || 0)).toFixed(2)}
+                            </td>
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <SectionBadge status={req.status} />
+                              {req.cancellation_reason && (
+                                <div style={{ fontSize: '0.73rem', color: '#f87171', marginTop: '0.25rem', fontWeight: '600', maxWidth: '160px' }}>
+                                  💬 {req.cancellation_reason}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <button
+                                  onClick={() => { setSelectedDetailRequest(req); setShowDetailModal(true); }}
+                                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(56,189,248,0.4)', background: 'rgba(56,189,248,0.08)', color: '#38bdf8', cursor: 'pointer', fontWeight: '700' }}
+                                >
+                                  📄 Details
+                                </button>
+                                <button
+                                  onClick={() => { setInputPassCode(req.request_code); setVerificationResult(null); setShowVerifyPassModal(true); }}
+                                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.08)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
+                                >
+                                  🔍 Pass
+                                </button>
+                                {req.status !== 'completed' && req.status !== 'cancelled' && req.status !== 'expired' && (
+                                  <button
+                                    onClick={() => handleCancelRequest(req.id)}
+                                    style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.1)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}
+                                  >
+                                    🚫 Cancel
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <PaginationControl
+                    currentPage={requestSafePage}
+                    totalPages={requestTotalPages}
+                    totalItems={filteredRequests.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setRequestPage}
+                  />
+                </>
               )}
             </div>
           );
@@ -614,6 +694,11 @@ export default function AdminDashboard({ user }) {
             if (financeFilter === 'cancelled') return r.status === 'cancelled';
             return true;
           });
+
+          const financeTotalPages = Math.max(1, Math.ceil(filteredFinanceRequests.length / PAGE_SIZE));
+          const financeSafePage = Math.min(financePage, financeTotalPages);
+          const financeStart = (financeSafePage - 1) * PAGE_SIZE;
+          const pagedFinanceRequests = filteredFinanceRequests.slice(financeStart, financeStart + PAGE_SIZE);
 
           // Accurate dynamic calculations directly from requests array
           const completedPayoutCalc = requests
@@ -695,7 +780,9 @@ export default function AdminDashboard({ user }) {
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div>
                     <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>💵 HoSZA Shift Financial Ledger</h2>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Showing {filteredFinanceRequests.length} shift transactions</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                      Showing {filteredFinanceRequests.length > 0 ? financeStart + 1 : 0}–{Math.min(financeStart + PAGE_SIZE, filteredFinanceRequests.length)} of {filteredFinanceRequests.length} shift transactions
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -710,7 +797,7 @@ export default function AdminDashboard({ user }) {
                       ].map(f => (
                         <button
                           key={f.key}
-                          onClick={() => setFinanceFilter(f.key)}
+                          onClick={() => { setFinanceFilter(f.key); setFinancePage(1); }}
                           style={{
                             padding: '0.35rem 0.8rem', borderRadius: '9999px', fontSize: '0.78rem',
                             fontWeight: '700', cursor: 'pointer',
@@ -738,65 +825,74 @@ export default function AdminDashboard({ user }) {
                 {filteredFinanceRequests.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>No financial transactions found for this filter.</div>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
-                      <thead>
-                        <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                          {['No.', 'Pass Code', 'Companion / Staff', 'Patient & Ward', 'Shift Date', 'Base (RM)', 'Tips (RM)', 'Total Payout', 'Payout Status'].map(h => (
-                            <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredFinanceRequests.map((req, i) => {
-                          const base = parseFloat(req.allowance_amount || 0);
-                          const tip = parseFloat(req.tip_amount || 0);
-                          const total = base + tip;
+                  <>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                        <thead>
+                          <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                            {['No.', 'Pass Code', 'Companion / Staff', 'Patient & Ward', 'Shift Date', 'Base (RM)', 'Tips (RM)', 'Total Payout', 'Payout Status'].map(h => (
+                              <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pagedFinanceRequests.map((req, i) => {
+                            const base = parseFloat(req.allowance_amount || 0);
+                            const tip = parseFloat(req.tip_amount || 0);
+                            const total = base + tip;
 
-                          return (
-                            <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                              <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                {req.companion ? (
-                                  <div>
-                                    <div style={{ fontWeight: '700', color: '#f1f5f9' }}>{req.companion.name}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                      IC: {req.companion.ic_number} {req.companion.companion_profile?.student_staff_id && `· 🎓 ${req.companion.companion_profile.student_staff_id}`}
+                            return (
+                              <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                                <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{financeStart + i + 1}</td>
+                                <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#f59e0b', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
+                                <td style={{ padding: '0.85rem 1rem' }}>
+                                  {req.companion ? (
+                                    <div>
+                                      <div style={{ fontWeight: '700', color: '#f1f5f9' }}>{req.companion.name}</div>
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        IC: {req.companion.ic_number} {req.companion.companion_profile?.student_staff_id && `· 🎓 ${req.companion.companion_profile.student_staff_id}`}
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <span style={{ color: 'var(--text-muted)', italic: 'true', fontSize: '0.8rem' }}>Not assigned yet</span>
-                                )}
-                              </td>
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
-                                <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.ward_name} ({req.bed_number})</div>
-                              </td>
-                              <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                                <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatShiftRange(req.start_time, req.end_time)}</div>
-                              </td>
-                              <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.83rem' }}>RM {base.toFixed(2)}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.83rem', color: '#fbbf24' }}>RM {tip.toFixed(2)}</td>
-                              <td style={{ padding: '0.85rem 1rem', fontWeight: '900', color: '#34d399', fontFamily: 'monospace', fontSize: '0.9rem' }}>
-                                RM {total.toFixed(2)}
-                              </td>
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                {req.status === 'completed' ? (
-                                  <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#34d399', background: 'rgba(5,150,105,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>✓ DISBURSED</span>
-                                ) : req.assigned_companion_id ? (
-                                  <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#fbbf24', background: 'rgba(245,158,11,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>⏳ PENDING SHIFT</span>
-                                ) : (
-                                  <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#94a3b8', background: 'rgba(100,116,139,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>UNASSIGNED</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-muted)', italic: 'true', fontSize: '0.8rem' }}>Not assigned yet</span>
+                                  )}
+                                </td>
+                                <td style={{ padding: '0.85rem 1rem' }}>
+                                  <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
+                                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.ward_name} ({req.bed_number})</div>
+                                </td>
+                                <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
+                                  <div style={{ fontSize: '0.82rem' }}>{req.shift_date}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatShiftRange(req.start_time, req.end_time)}</div>
+                                </td>
+                                <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.83rem' }}>RM {base.toFixed(2)}</td>
+                                <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.83rem', color: '#fbbf24' }}>RM {tip.toFixed(2)}</td>
+                                <td style={{ padding: '0.85rem 1rem', fontWeight: '900', color: '#34d399', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                  RM {total.toFixed(2)}
+                                </td>
+                                <td style={{ padding: '0.85rem 1rem' }}>
+                                  {req.status === 'completed' ? (
+                                    <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#34d399', background: 'rgba(5,150,105,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>✓ DISBURSED</span>
+                                  ) : req.assigned_companion_id ? (
+                                    <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#fbbf24', background: 'rgba(245,158,11,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>⏳ PENDING SHIFT</span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.73rem', fontWeight: '800', color: '#94a3b8', background: 'rgba(100,116,139,0.18)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>UNASSIGNED</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <PaginationControl
+                      currentPage={financeSafePage}
+                      totalPages={financeTotalPages}
+                      totalItems={filteredFinanceRequests.length}
+                      pageSize={PAGE_SIZE}
+                      onPageChange={setFinancePage}
+                    />
+                  </>
                 )}
               </div>
             </div>
@@ -804,186 +900,242 @@ export default function AdminDashboard({ user }) {
         })()}
 
         {/* ── Tab: Active Shifts ── */}
-        {activeTab === 'active_duties' && (
-          <div className="glass-panel animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)' }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>🔄 Active Ward Duty Shifts</h2>
-            </div>
-            {activeDutiesList.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>No active shifts at this time.</div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
-                  <thead>
-                    <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                      {['No.', 'Pass Code', 'Patient (RN)', 'Ward & Bed', 'Shift Hours', 'Status', ''].map(h => (
-                        <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeDutiesList.map((req, i) => (
-                      <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                        <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
-                        <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
-                          <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.patient_rn}</div>
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem' }}>{req.ward_name} · {req.bed_number}</td>
-                        <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                          {req.shift_date}<br /><span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</span>
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem' }}><SectionBadge status={req.status} /></td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          <button
-                            onClick={() => { setInputPassCode(req.request_code); setVerificationResult(null); setShowVerifyPassModal(true); }}
-                            style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.08)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
-                          >
-                            🔍 Check Pass
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {activeTab === 'active_duties' && (() => {
+          const activeDutiesTotalPages = Math.max(1, Math.ceil(activeDutiesList.length / PAGE_SIZE));
+          const activeDutiesSafePage = Math.min(activeDutiesPage, activeDutiesTotalPages);
+          const activeDutiesStart = (activeDutiesSafePage - 1) * PAGE_SIZE;
+          const pagedActiveDuties = activeDutiesList.slice(activeDutiesStart, activeDutiesStart + PAGE_SIZE);
+
+          return (
+            <div className="glass-panel animate-fade-in" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#34d399' }}>🔄 Active Ward Duty Shifts</h2>
+                {activeDutiesList.length > 0 && (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Showing {activeDutiesStart + 1}–{Math.min(activeDutiesStart + PAGE_SIZE, activeDutiesList.length)} of {activeDutiesList.length} active shifts
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        )}
+              {activeDutiesList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>No active shifts at this time.</div>
+              ) : (
+                <>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                          {['No.', 'Pass Code', 'Patient (RN)', 'Ward & Bed', 'Shift Hours', 'Status', ''].map(h => (
+                            <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pagedActiveDuties.map((req, i) => (
+                          <tr key={req.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                            <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{activeDutiesStart + i + 1}</td>
+                            <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: '#38bdf8', fontFamily: 'monospace', fontSize: '0.8rem' }}>{req.request_code}</td>
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <div style={{ fontWeight: '600' }}>{req.patient_name}</div>
+                              <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.patient_rn}</div>
+                            </td>
+                            <td style={{ padding: '0.85rem 1rem' }}>{req.ward_name} · {req.bed_number}</td>
+                            <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
+                              {req.shift_date}<br /><span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{req.start_time} – {req.end_time}</span>
+                            </td>
+                            <td style={{ padding: '0.85rem 1rem' }}><SectionBadge status={req.status} /></td>
+                            <td style={{ padding: '0.85rem 1rem' }}>
+                              <button
+                                onClick={() => { setInputPassCode(req.request_code); setVerificationResult(null); setShowVerifyPassModal(true); }}
+                                style={{ fontSize: '0.75rem', padding: '0.35rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.08)', color: '#34d399', cursor: 'pointer', fontWeight: '700' }}
+                              >
+                                🔍 Check Pass
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <PaginationControl
+                    currentPage={activeDutiesSafePage}
+                    totalPages={activeDutiesTotalPages}
+                    totalItems={activeDutiesList.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setActiveDutiesPage}
+                  />
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Tab: Pending Approvals ── */}
-        {activeTab === 'approvals' && (
-          <div className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#f472b6' }}>🔔 Pending Account Registrations ({unverifiedUsers.length})</h2>
-            </div>
-            {unverifiedUsers.length === 0 ? (
-              <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
-                ✓ All accounts are verified. No pending registrations.
+        {activeTab === 'approvals' && (() => {
+          const approvalsTotalPages = Math.max(1, Math.ceil(unverifiedUsers.length / PAGE_SIZE));
+          const approvalsSafePage = Math.min(approvalsPage, approvalsTotalPages);
+          const approvalsStart = (approvalsSafePage - 1) * PAGE_SIZE;
+          const pagedUnverifiedUsers = unverifiedUsers.slice(approvalsStart, approvalsStart + PAGE_SIZE);
+
+          return (
+            <div className="animate-fade-in">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#f472b6' }}>🔔 Pending Account Registrations ({unverifiedUsers.length})</h2>
+                  {unverifiedUsers.length > 0 && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                      Showing {approvalsStart + 1}–{Math.min(approvalsStart + PAGE_SIZE, unverifiedUsers.length)} of {unverifiedUsers.length} pending accounts
+                    </div>
+                  )}
+                </div>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                {unverifiedUsers.map(acc => (
-                  <div key={acc.id} className="glass-panel" style={{ padding: '1.25rem 1.5rem', borderLeft: '3px solid #f472b6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: '800', fontSize: '1rem' }}>{acc.name}</span>
-                        <RoleBadge role={acc.role} />
-                        <span style={{ fontSize: '0.73rem', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', padding: '0.15rem 0.55rem', borderRadius: '9999px', fontWeight: '700' }}>PENDING</span>
+              {unverifiedUsers.length === 0 ? (
+                <div className="glass-panel" style={{ textAlign: 'center', padding: '3.5rem', color: 'var(--text-muted)' }}>
+                  ✓ All accounts are verified. No pending registrations.
+                </div>
+              ) : (
+                <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+                  <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    {pagedUnverifiedUsers.map(acc => (
+                      <div key={acc.id} style={{ padding: '1.25rem 1.5rem', borderLeft: '3px solid #f472b6', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', border: '1px solid var(--glass-border)' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: '800', fontSize: '1rem' }}>{acc.name}</span>
+                            <RoleBadge role={acc.role} />
+                            <span style={{ fontSize: '0.73rem', background: 'rgba(245,158,11,0.15)', color: '#f59e0b', padding: '0.15rem 0.55rem', borderRadius: '9999px', fontWeight: '700' }}>PENDING</span>
+                          </div>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+                            <span>🪪 {acc.ic_number}</span>
+                            <span style={{ margin: '0 0.5rem' }}>·</span>
+                            <span>{acc.gender === 'L' ? '🔵 Male' : '🩷 Female'}</span>
+                            <span style={{ margin: '0 0.5rem' }}>·</span>
+                            <span>📧 {acc.email}</span>
+                            <span style={{ margin: '0 0.5rem' }}>·</span>
+                            <span>📱 {acc.phone}</span>
+                            {acc.companion_profile?.student_staff_id && (
+                              <><span style={{ margin: '0 0.5rem' }}>·</span><span style={{ color: '#34d399' }}>🎓 {acc.companion_profile.student_staff_id}</span></>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button onClick={() => handleApproveUser(acc.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>✓ Approve</button>
+                          <button onClick={() => handleRejectUser(acc.id)} style={{ fontSize: '0.82rem', padding: '0.5rem 1rem', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>✕ Reject</button>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                        <span>🪪 {acc.ic_number}</span>
-                        <span style={{ margin: '0 0.5rem' }}>·</span>
-                        <span>{acc.gender === 'L' ? '🔵 Male' : '🩷 Female'}</span>
-                        <span style={{ margin: '0 0.5rem' }}>·</span>
-                        <span>📧 {acc.email}</span>
-                        <span style={{ margin: '0 0.5rem' }}>·</span>
-                        <span>📱 {acc.phone}</span>
-                        {acc.companion_profile?.student_staff_id && (
-                          <><span style={{ margin: '0 0.5rem' }}>·</span><span style={{ color: '#34d399' }}>🎓 {acc.companion_profile.student_staff_id}</span></>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => handleApproveUser(acc.id)} className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}>✓ Approve</button>
-                      <button onClick={() => handleRejectUser(acc.id)} style={{ fontSize: '0.82rem', padding: '0.5rem 1rem', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer', fontWeight: '700' }}>✕ Reject</button>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  <PaginationControl
+                    currentPage={approvalsSafePage}
+                    totalPages={approvalsTotalPages}
+                    totalItems={unverifiedUsers.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setApprovalsPage}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Tab: User Directory ── */}
-        {activeTab === 'users' && (
-          <div className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>👥 Total Users</h2>
-              {/* Role filter pills — counts from actual allUsers array */}
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                {[
-                  { key: 'all', label: 'All', count: userCounts.all },
-                  { key: 'companion', label: 'Companions', count: userCounts.companion },
-                  { key: 'user', label: 'Family', count: userCounts.user },
-                  { key: 'staff', label: 'Staff', count: userCounts.staff },
-                  { key: 'admin', label: 'Admin', count: userCounts.admin },
-                ].map(f => (
-                  <button
-                    key={f.key}
-                    onClick={() => setRoleFilter(f.key)}
-                    style={{
-                      padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
-                      fontWeight: '700', cursor: 'pointer',
-                      background: roleFilter === f.key ? '#38bdf8' : 'rgba(255,255,255,0.07)',
-                      color: roleFilter === f.key ? '#0f172a' : 'var(--text-muted)',
-                      border: 'none', transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {f.label} <span style={{ opacity: 0.75 }}>({f.count})</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+        {activeTab === 'users' && (() => {
+          const userTotalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+          const userSafePage = Math.min(userPage, userTotalPages);
+          const userStart = (userSafePage - 1) * PAGE_SIZE;
+          const pagedUsers = filteredUsers.slice(userStart, userStart + PAGE_SIZE);
 
-            <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
-              ) : filteredUsers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No users found for this filter.</div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
-                    <thead>
-                      <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                        {['No.', 'Name', 'IC / MyKad', 'Gender', 'Role', 'Contact', 'UniSZA ID', 'Account', 'System Access & Action'].map(h => (
-                          <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredUsers.map((u, i) => (
-                        <tr key={u.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                          <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{i + 1}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontWeight: '700' }}>{u.name}</td>
-                          <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{u.ic_number}</td>
-                          <td style={{ padding: '0.85rem 1rem' }}>
-                            {u.gender === 'L'
-                              ? <span style={{ color: '#60a5fa', fontWeight: '700', fontSize: '0.8rem' }}>🔵 Male</span>
-                              : <span style={{ color: '#f472b6', fontWeight: '700', fontSize: '0.8rem' }}>🩷 Female</span>
-                            }
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem' }}><RoleBadge role={u.role} /></td>
-                          <td style={{ padding: '0.85rem 1rem' }}>
-                            <div style={{ fontSize: '0.82rem' }}>{u.email}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{u.phone}</div>
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem', color: u.companion_profile?.student_staff_id ? '#34d399' : 'var(--text-muted)', fontWeight: u.companion_profile?.student_staff_id ? '700' : '400', fontSize: '0.82rem' }}>
-                            {u.companion_profile?.student_staff_id || '—'}
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem' }}>
-                            {parseInt(u.is_verified) === 1
-                              ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#34d399', background: 'rgba(5,150,105,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>✓ Verified</span>
-                              : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>⏳ Pending</span>
-                            }
-                          </td>
-                          <td style={{ padding: '0.85rem 1rem' }}>
-                            <div
-                              onClick={() => handleToggleUserStatus(u.id, u.name, u.status)}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.55rem',
-                                cursor: 'pointer',
-                                userSelect: 'none'
-                              }}
-                              title={`Click to ${u.status === 'inactive' ? 'Activate' : 'Deactivate'} account for ${u.name}`}
-                            >
-                              {/* Toggle Switch Track */}
-                              <div
-                                style={{
-                                  width: '42px',
+          return (
+            <div className="animate-fade-in">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.05rem', fontWeight: '800' }}>👥 Total Users</h2>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                    Showing {filteredUsers.length > 0 ? userStart + 1 : 0}–{Math.min(userStart + PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length} users
+                  </div>
+                </div>
+                {/* Role filter pills — counts from actual allUsers array */}
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'all', label: 'All', count: userCounts.all },
+                    { key: 'companion', label: 'Companions', count: userCounts.companion },
+                    { key: 'user', label: 'Family', count: userCounts.user },
+                    { key: 'staff', label: 'Staff', count: userCounts.staff },
+                    { key: 'admin', label: 'Admin', count: userCounts.admin },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => { setRoleFilter(f.key); setUserPage(1); }}
+                      style={{
+                        padding: '0.35rem 0.85rem', borderRadius: '9999px', fontSize: '0.8rem',
+                        fontWeight: '700', cursor: 'pointer',
+                        background: roleFilter === f.key ? '#38bdf8' : 'rgba(255,255,255,0.07)',
+                        color: roleFilter === f.key ? '#0f172a' : 'var(--text-muted)',
+                        border: 'none', transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {f.label} <span style={{ opacity: 0.75 }}>({f.count})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+                {loading ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading...</div>
+                ) : filteredUsers.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No users found for this filter.</div>
+                ) : (
+                  <>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                        <thead>
+                          <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                            {['No.', 'Name', 'IC / MyKad', 'Gender', 'Role', 'Contact', 'UniSZA ID', 'Account', 'System Access & Action'].map(h => (
+                              <th key={h} style={{ padding: '0.85rem 1rem', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pagedUsers.map((u, i) => (
+                            <tr key={u.id} style={{ borderTop: '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                              <td style={{ padding: '0.85rem 1rem', fontWeight: '800', color: 'var(--text-muted)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{userStart + i + 1}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontWeight: '700' }}>{u.name}</td>
+                              <td style={{ padding: '0.85rem 1rem', fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{u.ic_number}</td>
+                              <td style={{ padding: '0.85rem 1rem' }}>
+                                {u.gender === 'L'
+                                  ? <span style={{ color: '#60a5fa', fontWeight: '700', fontSize: '0.8rem' }}>🔵 Male</span>
+                                  : <span style={{ color: '#f472b6', fontWeight: '700', fontSize: '0.8rem' }}>🩷 Female</span>
+                                }
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem' }}><RoleBadge role={u.role} /></td>
+                              <td style={{ padding: '0.85rem 1rem' }}>
+                                <div style={{ fontSize: '0.82rem' }}>{u.email}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{u.phone}</div>
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem', color: u.companion_profile?.student_staff_id ? '#34d399' : 'var(--text-muted)', fontWeight: u.companion_profile?.student_staff_id ? '700' : '400', fontSize: '0.82rem' }}>
+                                {u.companion_profile?.student_staff_id || '—'}
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem' }}>
+                                {parseInt(u.is_verified) === 1
+                                  ? <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#34d399', background: 'rgba(5,150,105,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>✓ Verified</span>
+                                  : <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#f59e0b', background: 'rgba(245,158,11,0.15)', padding: '0.2rem 0.6rem', borderRadius: '9999px' }}>⏳ Pending</span>
+                                }
+                              </td>
+                              <td style={{ padding: '0.85rem 1rem' }}>
+                                <div
+                                  onClick={() => handleToggleUserStatus(u.id, u.name, u.status)}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.55rem',
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                  }}
+                                  title={`Click to ${u.status === 'inactive' ? 'Activate' : 'Deactivate'} account for ${u.name}`}
+                                >
+                                  {/* Toggle Switch Track */}
+                                  <div
+                                    style={{
+                                      width: '42px',
                                   height: '22px',
                                   borderRadius: '9999px',
                                   background: u.status === 'inactive' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(52, 211, 153, 0.25)',
@@ -1025,12 +1177,21 @@ export default function AdminDashboard({ user }) {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
-                </div>
+                    </table>
+                  </div>
+                  <PaginationControl
+                    currentPage={userSafePage}
+                    totalPages={userTotalPages}
+                    totalItems={filteredUsers.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setUserPage}
+                  />
+                </>
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* ══════════════════════════════════════
